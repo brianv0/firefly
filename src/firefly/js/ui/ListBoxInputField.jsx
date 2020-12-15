@@ -90,10 +90,11 @@ function handleOnChange(ev, params, fireValueChange) {
 
 
 function checkForUndefined(v,props) {
-    var optionContain = (v) => props.options.find ( (op) => op.value === v );
+    var optionContain = (vArr) => vArr.reduce((v) => props.options.find ( (op) => op.value === v ));
+    const vArr = getCurrentValueArr(v);
 
     return isEmpty(props.options) ? v :
-            (!v ? props.options[0].value : (optionContain(v) ? v : props.options[0].value));
+            (!v ? props.options[0].value : (optionContain(vArr) ? v : v));
 }
 
 

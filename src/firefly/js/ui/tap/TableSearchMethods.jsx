@@ -1,4 +1,4 @@
-import React,  {PureComponent} from 'react';
+import React,  {PureComponent, useState, useEffect} from 'react';
 import PropTypes from 'prop-types';
 import {flux} from '../../core/ReduxFlux.js';
 import {get, set, isUndefined, has} from 'lodash';
@@ -6,8 +6,8 @@ import Enum from 'enum';
 import FieldGroupUtils, {getFieldVal} from '../../fieldGroup/FieldGroupUtils.js';
 import {ListBoxInputField} from '../ListBoxInputField.jsx';
 import {FieldGroup} from '../FieldGroup.jsx';
-import {findCenterColumnsByColumnsModel, posCol, UCDCoord} from '../../util/VOAnalyzer.js';
-import FieldGroupCntlr from '../../fieldGroup/FieldGroupCntlr.js';
+import {findCenterColumnsByColumnsModel, matchesObsCoreHeuristic, posCol, UCDCoord} from '../../util/VOAnalyzer.js';
+import FieldGroupCntlr, {dispatchValueChange} from '../../fieldGroup/FieldGroupCntlr.js';
 import {TargetPanel} from '../../ui/TargetPanel.jsx';
 import {SizeInputFields} from '../SizeInputField.jsx';
 import {ServerParams} from '../../data/ServerParams.js';
@@ -30,6 +30,23 @@ import {getColumnAttribute, tapHelpId, HeaderFont, MJD, ISO} from './TapUtil.js'
 import {HelpIcon} from '../HelpIcon.jsx';
 import {ColsShape, ColumnFld, getColValidator} from '../../charts/ui/ColumnOrExpression';
 import {CheckboxGroupInputField} from '../CheckboxGroupInputField.jsx';
+import {ValidationField} from '../ValidationField.jsx';
+import {
+    changeDatePickerOpenStatus,
+    Header,
+    FROM,
+    TO,
+    LeftInSearch,
+    LabelWidth,
+    LableSaptail,
+    SpatialWidth,
+    Width_Column, Width_Time_Wrapper, onChangeTimeField, onChangeTimeMode, onChangeDateTimePicker, updatePanelFields
+} from 'firefly/ui/tap/TableSearchHelpers';
+// import '../CatalogSearchMethodType.css';
+// import './react-datetime.css';
+import {ObsCoreSearch, ExposureDurationSearch, ObsCoreWavelengthSearch} from 'firefly/ui/tap/ObsCore';
+import {getAppOptions} from 'firefly/api/ApiUtil';
+import CoordinateSys from 'firefly/visualize/CoordSys';
 
 export const skey = 'TABLE_SEARCH_METHODS';
 const Spatial = 'Spatial';
@@ -47,6 +64,7 @@ const TemporalPanel = 'temporalSearchPanel';
 const TemporalCheck = 'temporalCheck';
 const TemporalColumns = 'temporalColumns';
 const DatePickerOpenStatus = 'datePickerOpenStatus';
+const ExposureColumns = 'exposureColumns';
 const TimePickerFrom = 'timePickerFrom';
 const TimePickerTo = 'timePickerTo';
 const MJDFrom = 'mjdfrom';
@@ -54,21 +72,15 @@ const MJDTo = 'mjdto';
 const TimeFrom = 'timeFrom';
 const TimeTo = 'timeTo';
 const TimeOptions = 'timeOptions';
-const Wavelength = 'Wavelength';
-const WavelengthPanel = 'wavelengthSearchPanel';
-const WavelengthCheck = 'wavelengthCheck';
-const WavelengthColumns = 'wavelengthColumns';
+
+const AdqlResults = 'adqlResults';
+
 
 const CrtColumnsModel = 'crtColumnsModel';
 
 const SomeFieldInvalid = 'invalid input';
 const PanelValid = 'panelValid';
 const PanelMessage = 'panelMessage';
-
-const LeftInSearch = 8;
-const LabelWidth = 106;
-const LableSaptail = 100;
-const SpatialWidth = 440;
 
 const fieldsMap = {[Spatial]: {
                         [SpatialPanel]: {label: Spatial},
@@ -82,15 +94,14 @@ const fieldsMap = {[Spatial]: {
                    [Temporal]: {
                         [TemporalPanel]: {label:Temporal},
                         [TemporalColumns]: {label: 'Temporal Column'},
+                        [ExposureColumns]: {label: 'Exposure Duration Column'},
                         [TimeFrom]: {label: 'From'},
                         [TimeTo]: {label: 'To'},
                         [MJDFrom]: {label: 'MJD (From)'},
                         [MJDTo]: {label: 'MJD (To)'},
                         [TimePickerFrom]: {label: 'ISO (From)'},
                         [TimePickerTo]: {label: 'ISO (To)'}},
-                   [Wavelength]: {
-                        [WavelengthPanel]: {label: Wavelength},
-                        [WavelengthColumns]: {label: 'Wavelength Column'}}};
+};
 
 
 const TapSpatialSearchMethod = new Enum({
@@ -98,57 +109,8 @@ const TapSpatialSearchMethod = new Enum({
     'Polygon': 'Polygon'
 });
 
-import '../CatalogSearchMethodType.css';
-import './react-datetime.css';
-
-const  FROM = 0;
-const  TO  = 1;
-const  timeKeyMap = {
-                     [TimeFrom]: {
-                         [MJD]: MJDFrom,
-                         [ISO]: TimePickerFrom
-                     },
-                     [TimeTo]: {
-                         [MJD]: MJDTo,
-                         [ISO]: TimePickerTo
-                     }
-                };
-
 // size used
-const Width_Column = 175;
-const Width_Time_Wrapper = Width_Column + 30;
-export const SpattialPanelWidth = Math.max(Width_Time_Wrapper*2, SpatialWidth) + LabelWidth + 10;
-
-
-function Header({title, helpID='', checkID, message, enabled=false}) {
-    const tooltip = title + ' search is included in the query if checked';
-    return (
-        <div style={{display: 'inline-flex', alignItems: 'center'}} title={title + ' search'}>
-            <div onClick={(e) => e.stopPropagation()} title={tooltip}>
-                <CheckboxGroupInputField
-                    key={checkID}
-                    fieldKey={checkID}
-                    initialState={{
-                        value: enabled ?title:'',
-                        label: ''
-                        }}
-                    options={[{label:'', value: title}]}
-                    alignment='horizontal'
-                    wrapperStyle={{whiteSpace: 'norma'}}
-                 />
-            </div>
-            <div style={{...HeaderFont, marginRight: 5}}>{title}</div>
-            <HelpIcon helpId={helpID}/>
-            <div style={{marginLeft: 10, color: 'saddlebrown', fontStyle: 'italic', fontWeight: 'normal'}}>{message}</div>
-        </div>
-    );
-}
-Header.propTypes = {
-    title: PropTypes.string,
-    helpID: PropTypes.string,
-    checkID: PropTypes.string,
-    message: PropTypes.string
-};
+export const SpattialPanelWidth = Math.max(Width_Time_Wrapper*2, SpatialWidth) + LabelWidth + 10; /* FIXME: Spattial spelling */
 
 function isFieldInPanel(fieldKey) {
     return Object.keys(fieldsMap).find((panel) => {
@@ -161,96 +123,277 @@ function isPanelChecked(searchItem, fields) {
     return get(fields, [ checkKey, 'value' ]) === searchItem;
 }
 
+function setPanelChecked(searchItem, fields) {
+    const checkKey = searchItem.toLowerCase() + 'Check';
+    return set(fields, [ checkKey, 'value' ], searchItem);
+}
+
 function getLabel(key, trailing='') {
     const panel = isFieldInPanel(key);
     const l = panel ? get(fieldsMap, [panel, key, 'label'], '') : '';
     return l ? l+trailing  : l;
 }
 
-export class TableSearchMethods extends PureComponent {
-    constructor(props) {
-        super(props);
-        this.state = Object.assign(this.nextState(props));
-    }
 
-    componentWillUnmount() {
-        if (this.removeListener) this.removeListener();
-        this.iAmMounted = false;
-    }
+const constraintReducers = {};
+constraintReducers.adqlReducerMap = new Map();
+constraintReducers.siaReducerMap = new Map();
+const chainedReducers = new Map();
 
-    componentDidMount() {
-        this.iAmMounted = true;
-        this.removeListener = flux.addListener(() => this.storeUpdate());
-    }
+function useAdqlReducer(component, adqlReducer, watchFields) {
+    const [adqlQueryResult, setAdqlQueryResult] = useState(null);
+    const fieldName = `${AdqlResults}.${component}`;
 
-    storeUpdate() {
-        if (this.iAmMounted) {
-            this.setState(this.nextState());
+    useEffect(() => {
+        function reduceQuery(fields, newFields) {
+            const adqlQueryResult = adqlReducer(fields, newFields);
+            newFields[fieldName] = adqlQueryResult;
+            setAdqlQueryResult(adqlQueryResult);
+            return adqlQueryResult;
         }
-    }
+        constraintReducers.adqlReducerMap.set(component, reduceQuery);
+        return () => {
+            constraintReducers.adqlReducerMap.delete(component);
+        };
+    });
 
-    nextState(props) {
-        const fields = FieldGroupUtils.getGroupFields(skey);
-        const columnsModel =  props ? props.columnsModel : getTblById(get(fields, [CrtColumnsModel, 'value']));
+    useEffect(() => {
+        return FieldGroupUtils.bindToStore(skey, (fields) => {
+            const adqlResults = get(fields, [fieldName]);
+            setAdqlQueryResult(adqlResults);
+        });
+    }, []);
 
-        return {fields, columnsModel};
-    }
+    const deps = watchFields || [];
+    useEffect(() => {
+        // Reset generated value when one of the deps change.
+        dispatchValueChange({...{value: ''}, fieldKey: fieldName, groupKey: skey});
+    }, [...deps, fieldName]);
 
-    render() {
-        const groupKey = skey;
-        const {fields, columnsModel} = this.state;
-
-        const cols = getAvailableColumns(columnsModel);
-        return (
-            <FieldGroup style={{height: '100%', overflow: 'auto'}}
-                        groupKey={skey} keepState={true} reducerFunc={tapSearchMethodReducer(columnsModel)}>
-                <SpatialSearch {...{cols, groupKey, fields, initArgs:this.props.initArgs}} />
-                <TemporalSearch {...{cols, groupKey, fields}} />
-                {false && <WavelengthSearch {...{cols, groupKey, fields, initArgs:this.props.initArgs}} />}
-            </FieldGroup>
-        );
-    }
+    return adqlQueryResult;
 }
 
+function useSiaReducer(component, siaReducer) {
+    const [siaQueryResult, setSiaQueryResult] = useState(null);
 
-const showTimePicker = (loc, show) => {
-    const timeKey = loc === FROM ? TimeFrom : TimeTo;
-    const title = loc === FROM ? 'select "from" time' : 'select "to" time';
-    const valueInfo = getTimeValueInfo(ISO, skey, timeKey);
-    const pickerKey = get(timeKeyMap, [timeKey, ISO]);
+    useEffect(() => {
+        function reduceQuery(fields, newFields) {
+            const siaQueryResult = siaReducer(fields, newFields);
+            setSiaQueryResult(siaQueryResult);
+            return siaQueryResult;
+        }
+        constraintReducers.siaReducerMap.set(component, reduceQuery);
+        return () => {
+            constraintReducers.siaReducerMap.delete(component);
+        };
+    });
 
-    const content = (
-            <DateTimePickerField fieldKey={pickerKey}
-                                 groupKey={skey}
-                                 showInput={false}
-                                 openPicker={true}
-                                 value={valueInfo.value}
-                                 inputStyle={{marginBottom: 3}}
-            />);
+    return siaQueryResult;
+}
 
-    showOptionsPopup({content, title, modal: true, show});
+function useFieldGroupReducer(component, fieldGroupReducer) {
+    useEffect(() => {
+        chainedReducers.set(component, fieldGroupReducer);
+        return () => {
+            chainedReducers.delete(component);
+        };
+    });
+}
+
+const FunctionalTableSearchMethods = (props) => {
+
+    const [fields, setFields] = useState(FieldGroupUtils.getGroupFields(skey));
+    //const [queryState, dispatchQueryState] = useReducer();
+    // FIXME: Rationalize use of state, props, etc...
+    //const [columnsModel, setColumnsModel] = useState(props ? props.columnsModel : getTblById(get(fields, [CrtColumnsModel, 'value'])));
+    const columnsModel = props.columnsModel;
+    const groupKey = skey;
+    const [adqlResults, setAdqlResults] = useState();
+
+    useEffect(() => {
+        setFields(FieldGroupUtils.getGroupFields(skey));
+        return FieldGroupUtils.bindToStore(groupKey, (fields) => {
+            const {adqlResults} = fields;
+            setAdqlResults(adqlResults);
+        });
+    }, []);
+
+    useEffect(() => {
+        // We effectively want to invalidate the computed ADQL results when the
+        // constraint reducers change. Dispatching an update will trigger the reducers.
+        dispatchValueChange({...{value: ''}, fieldKey: AdqlResults, groupKey});
+    }, [constraintReducers]);
+
+    const obsCoreEnabled = props.obsCoreEnabled;
+    const cols = getAvailableColumns(columnsModel);
+    const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
+
+    // We create a new reducer for this FieldGroup
+    return (
+        <FieldGroup style={{height: '100%', overflow: 'auto'}}
+                    groupKey={groupKey} keepState={true} reducerFunc={buildTapSearchMethodReducer(columnsModel, setAdqlResults)}>
+            {obsCoreEnabled && <ObsCoreSearch {...{cols, groupKey, fields, useAdqlReducer, useSiaReducer, useFieldGroupReducer}} />}
+            <SpatialSearch {...{cols, columnsModel, groupKey, fields, initArgs:props.initArgs, obsCoreEnabled, useAdqlReducer, useSiaReducer, useFieldGroupReducer}} />
+            {obsCoreEnabled && <ExposureDurationSearch {...{cols, groupKey, fields, useAdqlReducer, useSiaReducer, useFieldGroupReducer}} />}
+            {!obsCoreEnabled && <TemporalSearch {...{cols, columnsModel, groupKey, fields, obsCoreEnabled, useAdqlReducer, useSiaReducer, useFieldGroupReducer}} />}
+            {obsCoreEnabled && <ObsCoreWavelengthSearch {...{cols, groupKey, fields, useAdqlReducer, useSiaReducer, useFieldGroupReducer}} />}
+            {DEBUG_OBSCORE && <div>
+                adql WHERE: <br/>
+                {adqlResults?.adqlConstraints?.join(' AND ')}
+                <br/>
+                adql errors: <br/>
+                {adqlResults?.adqlConstraintErrors?.map((elem) => {elem.join(', ');}).join(' && ')}
+                <br/>
+            </div>}
+        </FieldGroup>
+    );
 };
 
+export const TableSearchMethods = FunctionalTableSearchMethods;
 
-
-function changeDatePickerOpenStatus(loc) {
-    return () => {
-        const show = !isDialogVisible(POPUP_DIALOG_ID);
-
-        showTimePicker(loc, show);
-    };
-}
-
-function SpatialSearch({cols, groupKey, fields, initArgs={}}) {
+function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCoreEnabled, useAdqlReducer, useSiaReducer, useFieldGroupReducer}) {
     const {POSITION:worldPt, radiusInArcSec}= initArgs;
+    const [spatialMethod, setSpatialMethod] = useState(TapSpatialSearchMethod.Cone.value);
+    const [spatialRegionOperation, setSpatialRegionOperation] = useState('contains_shape');
+    const centerColObj = formCenterColumns(columnsModel);
+    const [message, setMesage] = useState();
+
+    useEffect(() => {
+        return FieldGroupUtils.bindToStore(groupKey, (fields) => {
+            const panelActive = getFieldVal(groupKey, SpatialCheck) === 'Spatial';
+            setMesage(panelActive ? get(fields, [SpatialPanel, PanelMessage], '') : '');
+            setSpatialMethod(getFieldVal(groupKey, SpatialMethod, spatialMethod));
+            setSpatialRegionOperation(getFieldVal(groupKey, 'spatialRegionOperation', spatialRegionOperation));
+        });
+    }, []);
+
+    const onChange = (inFields, action, rFields) => {
+        const {fieldKey, value} = action.payload;
+
+        const onChangePolygonCoordinates = () => {
+            rFields.imageCornerCalc = clone(inFields.imageCornerCalc, {value: 'user'});
+            if(!isPanelChecked('Spatial', rFields)){
+                const panelChk = 'SpatialCheck';
+                set(rFields, [panelChk, 'value'], 'Spatial');
+            }
+        };
+
+        const onChangeToPolygonMethod = () => {
+            const cornerCalcV = get(inFields.imageCornerCalc, 'value', 'user');
+            const pv = getActivePlotView(visRoot());
+
+
+            if (pv && (cornerCalcV === 'image' || cornerCalcV === 'viewport' || cornerCalcV === 'area-selection')) {
+                const plot = primePlot(pv);
+
+                if (plot) {
+                    const sel = plot.attributes[PlotAttribute.SELECTION];
+                    if (!sel && cornerCalcV === 'area-selection') {
+                        rFields.imageCornerCalc = clone(inFields.imageCornerCalc, {value: 'image'});
+                    }
+                    const {value:cornerCalcV2}= rFields.imageCornerCalc;
+                    const v = calcCornerString(pv, cornerCalcV2);
+                    rFields.polygoncoords = clone(inFields.polygoncoords, {value: v});
+                }
+            }
+        };
+
+        if (fieldKey === PolygonCorners) {
+            onChangePolygonCoordinates(rFields);
+        } else if (fieldKey === SpatialMethod && value === TapSpatialSearchMethod.Polygon.key || fieldKey === ImageCornerCalc) {
+            onChangeToPolygonMethod();
+        }
+    };
+
+    const constraintReducer = function(fields, newFields) {
+        const adqlConstraints = [];
+        const adqlConstraintErrors = [];
+
+        const siaConstraints = [];
+        const siaConstraintErrors = [];
+
+        // Process constraints because we also do validation
+        const spatialConstraints = makeSpatialConstraints(fields, columnsModel, newFields);
+        updatePanelFields(spatialConstraints.fieldsValidity, fields, newFields, Spatial);
+        if (isPanelChecked(Spatial, fields)) {
+            if (spatialConstraints.valid && spatialConstraints.adqlConstraint?.length > 0){
+                adqlConstraints.push(spatialConstraints.adqlConstraint);
+            } else if (!spatialConstraints.valid) {
+                console.log('invalid spatial constraints'); // FIXME: Debug?
+            } else {
+                adqlConstraintErrors.push('Unknown error processing spatial constraints');
+            }
+        }
+        return {
+            adqlConstraint: adqlConstraints.join(' AND '),
+            adqlConstraintErrors: undefined,
+            siaConstraint: siaConstraints.join('&'),
+            siaConstraintErrors: siaConstraintErrors
+        };
+    };
+
+    const adqlReducer = (fields, newFields) => {
+        const {adqlConstraint, adqlConstraintErrors} = constraintReducer(fields, newFields);
+        return {adqlConstraint, adqlConstraintErrors};
+    };
+
+    const siaReducer = (fields, newFields) => {
+        const {siaConstraint, siaConstraintErrors} = constraintReducer(fields, newFields);
+        return {siaConstraint, siaConstraintErrors};
+    };
+
+    const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
+    const adqlResult = useAdqlReducer('spatial', adqlReducer, [obsCoreEnabled]);
+    const siaResult = useSiaReducer('spatial', siaReducer);
+
+    useFieldGroupReducer('spatial', onChange);
+
+    const doObsCoreSearch = () => {
+
+        return (
+            <div style={{marginTop: '5px'}}>
+                <ListBoxInputField
+                    fieldKey={'spatialRegionOperation'}
+                    options={
+                        [
+                            {label: 's_region contains point', value: 'contains_point'},
+                            {label: 's_region contains shape', value: 'contains_shape'},
+                            {label: 's_region is contained by shape', value: 'contained_by_shape'},
+                            {label: 's_region intersects shape', value: 'intersects'},
+                            {label: 'central point (s_ra, s_dec) is contained by shape', value: 'center_contained'},
+                        ]}
+                    initialState={{
+                        value: 'contains_shape'
+                    }}
+                    multiple={false}
+                    label={'Query type:'}
+                    labelWidth={LableSaptail}
+                />
+                <div style={{marginTop: '5px'}}>
+                    {spatialRegionOperation !== 'contains_point' && doSpatialSearch()}
+                    {spatialRegionOperation === 'contains_point' &&
+                        <div style={{height: 70, display:'flex', justifyContent: 'flex-start', alignItems: 'center', margienTop: '5px'}}>
+                            <TargetPanel labelWidth={LableSaptail} groupKey={groupKey} feedbackStyle={{height: 40}}/>
+                        </div>
+                    }
+                    </div>
+            </div>
+        );
+    };
+
     const showCenterColumns = () => {
         return (
-            <div style={{marginLeft: LeftInSearch}}>
+            <div style={{marginLeft: LeftInSearch, marginTop: '5px'}}>
                 <ColumnFld fieldKey={CenterLonColumns}
                            groupKey={groupKey}
                            cols={cols}
                            name={getLabel(CenterLonColumns).toLowerCase()} // label that appears in column chooser
                            inputStyle={{overflow:'auto', height:12, width: Width_Column}}
+                           initValue={centerColObj.lon}
+                           tooltip={'Center longitude column for spatial search'}
+                           label={getLabel(CenterLonColumns, ':')}
+                           labelWidth={LabelWidth}
+                           validator={getColValidator(cols, false, false)}
                 />
                 <div style={{marginTop: 5}}>
                     <ColumnFld fieldKey={CenterLatColumns}
@@ -258,6 +401,12 @@ function SpatialSearch({cols, groupKey, fields, initArgs={}}) {
                                cols={cols}
                                name={getLabel(CenterLatColumns).toLowerCase()} // label that appears in column chooser
                                inputStyle={{overflow:'auto', height:12, width: Width_Column}}
+                               initValue={centerColObj.lat}
+                               tooltip={'Center latitude column for spatial search'}
+                               label={getLabel(CenterLatColumns, ':')}
+                               labelWidth={LabelWidth}
+                               validator={getColValidator(cols, false, false)}
+
                     />
                 </div>
             </div>
@@ -267,14 +416,12 @@ function SpatialSearch({cols, groupKey, fields, initArgs={}}) {
     const doSpatialSearch = () => {
         return (
             <div style={{display:'flex', flexDirection:'column', flexWrap:'no-wrap',
-                         width: SpatialWidth, marginLeft: `${LabelWidth + LeftInSearch}px`, marginTop: 5}}>
-                {selectSpatialSearchMethod(groupKey, fields)}
-                {setSpatialSearchSize(fields, radiusInArcSec)}
+                         width: SpatialWidth, marginLeft: `${LeftInSearch}px`, marginTop: 5}}>
+                {selectSpatialSearchMethod(groupKey, fields, spatialMethod)}
+                {setSpatialSearchSize(fields, radiusInArcSec, spatialMethod)}
             </div>
         );
     };
-
-    const message = get(fields, [SpatialCheck, 'value']) === Spatial ? get(fields, [SpatialPanel, PanelMessage], '') : '';
 
     return (
         <FieldGroupCollapsible header={<Header title={Spatial}  helpID={tapHelpId('spatial')}
@@ -283,10 +430,15 @@ function SpatialSearch({cols, groupKey, fields, initArgs={}}) {
                                fieldKey={SpatialPanel}
                                wrapperStyle={{marginBottom: 15}}
                                headerStyle={HeaderFont}>
-            <div style={{marginTop: 5}}>
-                {showCenterColumns()}
-                {doSpatialSearch()}
+            <div style={{marginTop: '5px'}}>
+                {!obsCoreEnabled && showCenterColumns()}
+                {!obsCoreEnabled && doSpatialSearch()}
+                {obsCoreEnabled && doObsCoreSearch()}
             </div>
+            {DEBUG_OBSCORE && <div>
+                adql fragment: <br/> {adqlResult?.adqlConstraint} <br/>
+                sia fragment: {siaResult?.siaConstraintErrors?.length ? `Error: ${siaResult.siaConstraintErrors.join(' ')}` : siaResult?.siaConstraint}
+            </div>}
         </FieldGroupCollapsible>
     );
 }
@@ -295,19 +447,14 @@ SpatialSearch.propTypes = {
     cols: ColsShape,
     groupKey: PropTypes.string,
     fields: PropTypes.object,
-    initArgs: PropTypes.object
+    initArgs: PropTypes.object,
+    obsCoreEnabled: PropTypes.bool,
 };
 
-
-function getTimeValueInfo(timeMode, groupKey, timeFieldKey) {
-    const timeKey = get(timeKeyMap, [timeFieldKey, timeMode]);
-    const fields = FieldGroupUtils.getGroupFields(groupKey);
-    const {value='', valid=true, message=''} = get(fields, timeKey);
-
-    return {value, valid, message};
-}
-
-function TemporalSearch({cols, groupKey, fields}) {
+/**
+ * Temporal Search is not relevant to SIA/ObsCore, so we don't do SIA reduction.
+ */
+function TemporalSearch({cols, columnsModel, groupKey, fields, useAdqlReducer, useSiaReducer, useFieldGroupReducer}) {
     const showTemporalColumns = () => {
         return (
             <div style={{marginLeft: LeftInSearch}}>
@@ -316,6 +463,10 @@ function TemporalSearch({cols, groupKey, fields}) {
                            cols={cols}
                            name={getLabel(TemporalColumns).toLowerCase()} // label that appears in column choosery
                            inputStyle={{overflow:'auto', height:12, width: Width_Column}}
+                           tooltip={'Column for temporal search'}
+                           label={getLabel(TemporalColumns, ':')}
+                           labelWidth={LabelWidth}
+                           validator={getColValidator(cols, false, false)}
                 />
             </div>
         );
@@ -334,16 +485,23 @@ function TemporalSearch({cols, groupKey, fields}) {
                                       options={timeOptions}
                                       alignment={'horizontal'}
                                       wrapperStyle={{width: LabelWidth, paddingRight:'4px'}}
+                                      initialState={{
+                                          value: ISO
+                                      }}
+                                      tooltip='Choose between:\nISO 8601 time format (e.g., 2021-03-20)\nor\nModified Julian Date time format (e.g., 59293.1)'
                 />
                 <div style={{width: Width_Time_Wrapper}}>
                     <TimePanel fieldKey={TimeFrom}
                                  groupKey={skey}
                                  timeMode={crtTimeMode}
                                  icon={icon}
-                                 onClickIcon={changeDatePickerOpenStatus(FROM)}
+                                 onClickIcon={changeDatePickerOpenStatus(FROM, TimeFrom)}
                                  feedbackStyle={{height: 100}}
                                  inputWidth={Width_Column}
                                  inputStyle={{overflow:'auto', height:16}}
+                                 validator={timeValidator}
+                                 tooltip={"'from' time"}
+
                     />
                 </div>
                 <div style={{width: Width_Time_Wrapper}}>
@@ -351,15 +509,84 @@ function TemporalSearch({cols, groupKey, fields}) {
                                groupKey={skey}
                                timeMode={crtTimeMode}
                                icon={icon}
-                               onClickIcon={changeDatePickerOpenStatus(TO)}
+                               onClickIcon={changeDatePickerOpenStatus(TO, TimeTo)}
                                feedbackStyle={{height: 100}}
                                inputWidth={Width_Column}
                                inputStyle={{overflow:'auto', height:16}}
+                               validator={timeValidator}
+                               tooltip={"'to' time"}
                     />
                </div>
             </div>
         );
     };
+
+    const onChange = (inFields, action, rFields) => {
+
+        const {fieldKey, value} = action.payload;
+        if (fieldKey === TimeFrom || fieldKey === TimeTo) { // update mjd & picker
+            onChangeTimeField(value, inFields, rFields, fieldKey, TimeOptions);
+        } else if (fieldKey === TimeOptions) {    // time mode changes => update timefrom and timeto value
+            onChangeTimeMode(value, inFields, rFields, [TimeFrom, TimeTo]);
+        } else if ( (fieldKey.startsWith(TimeFrom) || fieldKey.startsWith(TimeTo)) && fieldKey.endsWith('Picker')) { // update mjd & time fields
+            // Picker Key is `${fieldKey}Picker`
+            const {timeOptions} = inFields;
+            const targetKey = fieldKey.substring(0, fieldKey.indexOf('Picker'));
+            onChangeDateTimePicker(value, inFields, rFields, targetKey, fieldKey, timeOptions);
+            if(!isPanelChecked(Temporal, rFields)){
+                set(rFields, [TemporalCheck, 'value'], Temporal);
+            }
+        } else if (fieldKey === TemporalColumns) {
+            if (inFields[TemporalColumns]?.value?.length){
+                if(!isPanelChecked(Temporal, rFields)){
+                    set(rFields, [TemporalCheck, 'value'], Temporal);
+                }
+            }
+        }
+    };
+
+    useFieldGroupReducer('temporal', onChange);
+
+    const constraintReducer = function(fields, newFields) {
+        const adqlConstraints = [];
+        const adqlConstraintErrors = [];
+
+        const siaConstraints = [];
+        const siaConstraintErrors = [];
+
+        // Process constraints because we also do validation
+        const temporalConstraints = makeTemporalConstraints(fields, columnsModel, newFields);
+        if (isPanelChecked(Temporal, fields)) {
+            if (!temporalConstraints.valid){
+                console.log('invalid spatial constraints');
+            }
+            if (!temporalConstraints.where) {
+                adqlConstraintErrors.push('Unknown error processing spatial constraints');
+            } else {
+                adqlConstraints.push(temporalConstraints.where);
+            }
+        }
+        return {
+            adqlConstraint: adqlConstraints.join(' AND '),
+            adqlConstraintErrors: undefined,
+            siaConstraint: siaConstraints.join('&'),
+            siaConstraintErrors: siaConstraintErrors
+        };
+    };
+
+    const adqlReducer = (fields, newFields) => {
+        const {adqlConstraint, adqlConstraintErrors} = constraintReducer(fields, newFields);
+        return {adqlConstraint, adqlConstraintErrors};
+    };
+
+    const siaReducer = (fields, newFields) => {
+        const {siaConstraint, siaConstraintErrors} = constraintReducer(fields, newFields);
+        return {siaConstraint, siaConstraintErrors};
+    };
+
+    const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
+    const adqlResult = useAdqlReducer('temporal', adqlReducer);
+    const siaResult = useSiaReducer('temporal', siaReducer);
 
     const message = get(fields, [TemporalCheck, 'value']) === Temporal ?get(fields, [TemporalPanel, PanelMessage], '') :'';
     return (
@@ -373,6 +600,10 @@ function TemporalSearch({cols, groupKey, fields}) {
                     {showTemporalColumns()}
                     {showTimeRange()}
                 </div>
+            {DEBUG_OBSCORE && <div>
+                adql fragment: <br/> {adqlResult?.adqlConstraint} <br/>
+                sia fragment: {siaResult?.siaConstraintErrors?.length ? `Error: ${siaResult.siaConstraintErrors.join(' ')}` : siaResult?.siaConstraint}
+            </div>}
         </FieldGroupCollapsible>
     );
 }
@@ -380,48 +611,19 @@ function TemporalSearch({cols, groupKey, fields}) {
 TemporalSearch.propTypes = {
     cols: ColsShape,
     groupKey: PropTypes.string,
-    fields: PropTypes.object
+    fields: PropTypes.object,
+    obsCoreEnabled: PropTypes.bool
 };
 
 
-
-function WavelengthSearch({cols, groupKey, fields, initArgs={}}) {
-    const showWavelengthColumns = () => {
-        return (
-            <div style={{marginLeft: LeftInSearch}}>
-                <ColumnFld fieldKey={WavelengthColumns}
-                           groupKey={groupKey}
-                           cols={cols}
-                           name={getLabel(WavelengthColumns).toLowerCase()} // label that appears in column chooser
-                           label={getLabel(WavelengthColumns, ':')}
-                           labelWidth={LabelWidth}
-                           tooltip={'Column for wavelength search'}
-                           inputStyle={{overflow:'auto', height:12, width: Width_Column}}
-                />
-            </div>
-        );
-    };
-    return (
-        <FieldGroupCollapsible header={<Header title={Wavelength} helpID={tapHelpId('wavelength')}
-                                               checkID={WavelengthCheck}/>}
-                               initialState={{ value: 'closed' }}
-                               fieldKey={WavelengthPanel}
-                               headerStyle={HeaderFont}>
-            <div style={{width: 100, height: 50}}>
-                {showWavelengthColumns()}
-            </div>
-        </FieldGroupCollapsible>
-    );
-}
-
-WavelengthSearch.propTypes = {
-    cols: ColsShape,
-    groupKey: PropTypes.string,
-    fields: PropTypes.object
-};
+// WavelengthSearch.propTypes = {
+//     cols: ColsShape,
+//     groupKey: PropTypes.string,
+//     fields: PropTypes.object
+// };
 
 
-function selectSpatialSearchMethod(groupKey, fields) {
+function selectSpatialSearchMethod(groupKey, fields, spatialMethod) {
     const spatialOptions = () => {
         return TapSpatialSearchMethod.enums.reduce((p, enumItem)=> {
             p.push({label: enumItem.key, value: enumItem.value});
@@ -436,22 +638,34 @@ function selectSpatialSearchMethod(groupKey, fields) {
                 options={ spatialOptions()}
                 wrapperStyle={{marginRight:'15px', padding:'8px 0 5px 0'}}
                 multiple={false}
+                tooltip={'Select spatial search method'}
+                label={getLabel(SpatialMethod, ':')}
+                labelWidth={LableSaptail}
+                initialState={{
+                    value: TapSpatialSearchMethod.Cone.value
+                }}
             />
-            {renderTargetPanel(groupKey, fields)}
+            {renderTargetPanel(groupKey, fields, spatialMethod)}
         </div>
     );
     return spatialSearchList;
 }
 
+ObsCoreSearch.propTypes = {
+    cols: ColsShape,
+    groupKey: PropTypes.string,
+    fields: PropTypes.object
+};
+
 /**
  * render the target panel for cone search
  * @param groupKey
  * @param fields
+ * @param spatialMethod
  * @returns {null}
  */
-function renderTargetPanel(groupKey, fields) {
-    const searchType = get(fields, [SpatialMethod, 'value'], TapSpatialSearchMethod.Cone.value);
-    const visible = (searchType === TapSpatialSearchMethod.Cone.value);
+function renderTargetPanel(groupKey, fields, spatialMethod) {
+    const visible = (spatialMethod === TapSpatialSearchMethod.Cone.value);
     const targetSelect = () => {
         return (
             <div style={{height: 70, display:'flex', justifyContent: 'flex-start', alignItems: 'center'}}>
@@ -467,11 +681,12 @@ function renderTargetPanel(groupKey, fields) {
  * render the size area for each spatial search type
  * @param fields
  * @param radiusInArcSec
+ * @param spatialMethod
  * @returns {*}
  */
-function setSpatialSearchSize(fields, radiusInArcSec) {
+function setSpatialSearchSize(fields, radiusInArcSec, spatialMethod) {
     const border = '1px solid #a3aeb9';
-    const searchType = get(fields, [SpatialMethod, 'value'], TapSpatialSearchMethod.Cone.value);
+    const searchType = spatialMethod;
 
     if (searchType === TapSpatialSearchMethod.Cone.value) {
         return (
@@ -524,14 +739,100 @@ radiusInField.propTypes = {
     radiusInArcSec: PropTypes.number
 };
 
-
-const defaultSpatialConstraints = {valid: true, where: '', title: 'spatial search error'};
+const defaultSpatialConstraints =  {valid: true, where: '', title: 'spatial search error'};
 const defaultTemporalConstraints =  {valid: true, where: '', title: 'temporal search error'};
 
-function makeSpatialConstraints(fields, columnsModel) {
-    const NOConstraint = '';
-    const retval = clone(defaultSpatialConstraints);
+function makeSpatialConstraints(fields, columnsModel, newFields) {
+    const opFields = newFields || fields;
+    const retval = {valid: true, title: 'spatial search error'};
+    let adqlConstraint = '';
     const {centerLonColumns, centerLatColumns, spatialMethod} = fields;
+    const fieldsValidity = new Map();
+
+    const checkField = (key, fieldsValidity) => {
+        const retval = getFieldValidity(opFields, key, false);
+        const field = get(opFields, key);
+        const validity =  {valid: retval.valid, message: retval.message};
+        if (!retval.valid){
+            updateMessage(retval, Spatial, key);
+        }
+        if (has(field, 'nullAllowed')) {
+            validity.nullAllowed = false;
+        }
+        fieldsValidity.set(key, validity);
+        return validity;
+    };
+
+    const checkPoint = function(fields, worldSys, adqlCoordSys, fieldsValidity) {
+        checkField(ServerParams.USER_TARGET_WORLD_PT, fieldsValidity);
+        const fieldValidity = fieldsValidity.get(ServerParams.USER_TARGET_WORLD_PT);
+        const worldPt = parseWorldPt(get(fields, [ServerParams.USER_TARGET_WORLD_PT, 'value']));
+        let newWpt = {};
+        if (worldPt){
+            newWpt = convert(worldPt, worldSys);
+        } else {
+            // Point wasn't actually valid
+            fieldValidity.valid = false;
+            fieldValidity.message = 'no target found';
+        }
+        return {...newWpt, ...fieldValidity};
+    };
+
+    const checkUserArea = function(spatialMethod, fields, worldSys, adqlCoordSys) {
+        const fieldsValidity = new Map();
+        const retval = {valid: true, empty: true};
+        let userArea;
+        const {polygoncoords} = fields;
+        if (spatialMethod.value === TapSpatialSearchMethod.Cone.value) {
+            const pointResult = checkPoint(fields, worldSys, adqlCoordSys, fieldsValidity);
+            checkField(RadiusSize, fieldsValidity);
+            const {coneSize} = fields;
+            const size = coneSize?.value;
+            if (pointResult.valid && size) {
+                userArea = `CIRCLE('${adqlCoordSys}', ${pointResult.x}, ${pointResult.y}, ${size})`;
+            }
+        } else if (spatialMethod.value === TapSpatialSearchMethod.Polygon.value && polygoncoords?.value) {
+            let polygonValidity;
+            const splitPairs = polygoncoords.value ? polygoncoords.value.trim().split(',') : '';
+            const newCorners = splitPairs.reduce((p, onePoint) => {
+                const corner = onePoint.trim().split(' ');
+                if ((corner.length !== 2) || isNaN(Number(corner[0])) || isNaN(Number(corner[1]))) {
+                    polygonValidity = {valid: false, message: 'bad polygon pair'};
+                } else {
+                    if (p) {
+                        const pt = convert(makeWorldPt(Number(corner[0]), Number(corner[1])), worldSys);
+                        p.push(pt);
+                    } else {
+                        p = null;
+                    }
+                }
+                return p;
+            }, []);
+
+            if (!newCorners || newCorners.length < 3 || newCorners.length > 15) {
+                if (newCorners && newCorners.length >= 1) {
+                    polygonValidity = {valid: false, message: 'too few or too many corner specified'};
+                }
+            }
+
+            const cornerStr = newCorners.reduce((p, oneCorner, idx) => {
+                p += oneCorner.x + ', ' + oneCorner.y;
+                if (idx < (newCorners.length - 1)) {
+                    p += ', ';
+                }
+                return p;
+            }, '');
+            if (polygonValidity) {
+                fieldsValidity.set('polygoncoords', polygonValidity);
+            } else {
+                userArea = `POLYGON('${adqlCoordSys}', ${cornerStr})`;
+            }
+        }
+        retval.valid = Array.from(fieldsValidity.values()).every((v) => v.valid);
+        retval.userArea = userArea;
+        retval.fieldsValidity = fieldsValidity;
+        return retval;
+    };
 
     // find ucd coordinate in type of UCDCoord
     const getUCDCoord = (colName) => {
@@ -544,121 +845,138 @@ function makeSpatialConstraints(fields, columnsModel) {
         }
     };
 
-    const ucdCoord = getUCDCoord(centerLonColumns.value);
-    const worldSys = posCol[ucdCoord.key].coord;
-    const adqlCoordSys = posCol[ucdCoord.key].adqlCoord;
-    const point = `POINT('${adqlCoordSys}', ${centerLonColumns.value}, ${centerLatColumns.value})`;
-    let   userArea;
-    let   newWpt;
-
-    if (spatialMethod.value === TapSpatialSearchMethod.Cone.value) {
-        const {coneSize} = fields;
-        const worldPt = parseWorldPt(get(fields, [ServerParams.USER_TARGET_WORLD_PT, 'value']));
-        const size = coneSize?.value;
-
-        if (!worldPt || !size) {
-            return retval;
+    const {spatialRegionOperation} = fields;
+    if (centerLatColumns?.mounted || spatialRegionOperation?.value === 'center_contained') {
+        // The following should always be s_ra, s_dec for ObsCore/center_contained
+        checkField(CenterLonColumns, fieldsValidity);
+        checkField(CenterLatColumns, fieldsValidity);
+        const ucdCoord = getUCDCoord(centerLonColumns.value);
+        const worldSys = posCol[ucdCoord.key].coord;
+        const adqlCoordSys = posCol[ucdCoord.key].adqlCoord;
+        const point = `POINT('${adqlCoordSys}', ${centerLonColumns.value}, ${centerLatColumns.value})`;
+        const userAreaResult = checkUserArea(spatialMethod, fields, worldSys, adqlCoordSys);
+        userAreaResult.fieldsValidity.forEach((value, key) => fieldsValidity.set(key, value));
+        if (userAreaResult.valid) {
+            adqlConstraint = `CONTAINS(${point},${userAreaResult.userArea})=1`;
         }
-
-        newWpt = convert(worldPt, worldSys);
-        userArea = `CIRCLE('${adqlCoordSys}', ${newWpt.x}, ${newWpt.y}, ${size})`;
-
-    } else if (spatialMethod.value === TapSpatialSearchMethod.Polygon.value) {
-        const {polygoncoords} = fields;
-
-        if (!polygoncoords?.value) {
-            return retval;
-        }
-
-        const newCorners = polygoncoords.value.trim().split(',').reduce((p, onePoint) => {
-            const corner = onePoint.trim().split(' ');
-
-            if (p && corner.length === 2) {
-                const pt = convert(makeWorldPt(Number(corner[0]), Number(corner[1])), worldSys);
-                p.push(pt);
-            } else {
-                p = null;
+    } else if (spatialRegionOperation?.mounted){
+        const worldSys = CoordinateSys.EQ_J2000;
+        const adqlCoordSys = 'ICRS';
+        if (spatialRegionOperation.value === 'contains_point') {
+            const pointResult = checkPoint(fields, worldSys, adqlCoordSys, fieldsValidity);
+            if (pointResult.valid){
+                const point = `POINT('${adqlCoordSys}', ${pointResult.x}, ${pointResult.y})`;
+                // can only be 'contains'
+                adqlConstraint = `CONTAINS(${point}, s_region)=1`;
             }
-            return p;
-        }, []);
-
-        if (!newCorners || newCorners.length < 3 || newCorners.length > 15) {
-            if (newCorners && newCorners.length >= 1) {
-                retval.valid = false;
-                retval.message = 'too few or too many corner specified';
-                return retval;
-            } else {
-                return retval;   // no content
+        } else if (spatialRegionOperation.value === 'contains_shape' || spatialRegionOperation.value === 'contained_by_shape') {
+            const contains = spatialRegionOperation.value === 'contains_shape';
+            const userAreaResult = checkUserArea(spatialMethod, fields, worldSys, adqlCoordSys);
+            userAreaResult.fieldsValidity.forEach((value, key) => fieldsValidity.set(key, value));
+            if (userAreaResult.valid) {
+                const containedBy = contains ? 's_region' : userAreaResult.userArea;
+                const region = contains ? userAreaResult.userArea : 's_region';
+                adqlConstraint = `CONTAINS(${region}, ${containedBy})=1`;
+            }
+        } else if (spatialRegionOperation.value === 'intersects'){
+            const userAreaResult = checkUserArea(spatialMethod, fields, worldSys, adqlCoordSys);
+            userAreaResult.fieldsValidity.forEach((value, key) => fieldsValidity.set(key, value));
+            if (userAreaResult.valid) {
+                adqlConstraint = `INTERSECTS(${userAreaResult.userArea}, s_region)=1`;
             }
         }
-
-        const cornerStr = newCorners.reduce((p, oneCorner, idx) => {
-            p += oneCorner.x + ', ' + oneCorner.y;
-            if (idx < (newCorners.length -1)) {
-                p += ', ';
-            }
-            return p;
-        }, '');
-
-        userArea = `POLYGON('${adqlCoordSys}', ${cornerStr})`;
-    } else {
-        userArea = NOConstraint;
     }
-
-    retval.where = userArea ? `CONTAINS(${point},${userArea})=1`:userArea;
+    // We don't want to say we are valid unless enough components were mounted and checked.
+    const enoughMounted = centerLatColumns?.mounted || spatialRegionOperation?.mounted;
+    retval.fieldsValidity = fieldsValidity;
+    retval.valid = Array.from(fieldsValidity.values()).every((validity) => validity.valid) && enoughMounted;
+    retval.adqlConstraint = adqlConstraint;
     return retval;
 }
 
-function makeTemporalConstraints(fields, columnsModel) {
+function makeTemporalConstraints(fields, columnsModel, newFields) {
+    const opFields = newFields || fields;
+    const panelActive = isPanelChecked(Temporal, opFields);
+    const nullAllowed = !isPanelChecked(Temporal, opFields); // FIXME: Hack
+    const fieldsValidity = new Map();
+
+    const checkField = (key, fieldsValidity) => {
+        const retval = getFieldValidity(opFields, key, nullAllowed);
+        const field = get(opFields, key);
+        const validity =  {valid: retval.valid, message: retval.message};
+        if (!retval.valid){
+            updateMessage(retval, Temporal, key);
+        }
+        if (has(field, 'nullAllowed')) {
+            validity.nullAllowed = nullAllowed;
+        }
+        fieldsValidity.set(key, validity);
+        return validity;
+    };
+
     const retval = clone(defaultTemporalConstraints);
-    const timeColumns = get(fields, [TemporalColumns, 'value'], '').trim().split(',').reduce((p, c) => {
-        if (c.trim()) p.push(c.trim());
-        return p;
-    }, []);
-
-    const mjdRange = [TimeFrom, TimeTo].map((timeKey) => {
-        const mjdKey =  timeKeyMap[timeKey][MJD];
-        return get(fields, [mjdKey, 'value'], '');
-    });
-
-
-    if (mjdRange[FROM] && mjdRange[TO]) {
-        if (Number(mjdRange[FROM]) > Number(mjdRange[TO])) {
-            retval.valid = false;
-            retval.message = 'the start time is greater than the end time';
-            return retval;
-        }
-    }
-
     let where = '';
-    if (timeColumns.length === 1) {
-        const timeColumn = timeColumns[0];
+    const columnsValidity = checkField(TemporalColumns, fieldsValidity);
+    const fromValidity = checkField(TimeFrom, fieldsValidity);
+    const toValidity = checkField(TimeTo, fieldsValidity);
+    if (columnsValidity.valid && fromValidity.valid && toValidity.valid){
+        const timeColumns = get(opFields, [TemporalColumns, 'value'], '').trim().split(',').reduce((p, c) => {
+            if (c.trim()) p.push(c.trim());
+            return p;
+        }, []);
 
-        // use MJD if time column has a numeric type, ISO otherwise
-        const datatype = getColumnAttribute(columnsModel, timeColumn, 'datatype').toLowerCase();
-        // ISO types: char, varchar, timestamp, ?
-        const useISO = !['double', 'float', 'real', 'int', 'long', 'short'].some((e) => datatype.includes(e));
-
-        let timeRange = mjdRange;
-        if (useISO) {
-            timeRange = mjdRange.map((value) => convertMJDToISO(value));
-        }
-
-        const timeConstraints = timeRange.map((oneRange, idx) => {
-            if (!oneRange) {
-                return '';
-            } else {
-                const limit  = useISO ? `'${oneRange}'` : oneRange;
-                return idx === FROM ? `${timeColumn} >= ${limit}` : `${timeColumn} <= ${limit}`;
-            }
+        const mjdRange = [TimeFrom, TimeTo].map((timeKey) => {
+            return get(opFields, [timeKey, MJD, 'value'], '');
         });
 
-        if (!timeConstraints[FROM] || !timeConstraints[TO]) {
-            where = timeConstraints[FROM] + timeConstraints[TO];
-        } else {
-            where =`(${timeConstraints[FROM]} AND ${timeConstraints[TO]})`;
+        if (mjdRange[FROM] && mjdRange[TO]) {
+            if (Number(mjdRange[FROM]) > Number(mjdRange[TO])) {
+                toValidity.valid = false;
+                toValidity.message = 'the start time is greater than the end time';
+            }
+        }
+
+        if (timeColumns.length === 1) {
+            const timeColumn = timeColumns[0];
+
+            // use MJD if time column has a numeric type, ISO otherwise
+            const datatype = getColumnAttribute(columnsModel, timeColumn, 'datatype').toLowerCase();
+            // ISO types: char, varchar, timestamp, ?
+            const useISO = !['double', 'float', 'real', 'int', 'long', 'short'].some((e) => datatype.includes(e));
+
+            let timeRange = mjdRange;
+            if (useISO) {
+                timeRange = mjdRange.map((value) => convertMJDToISO(value));
+            }
+
+            const timeConstraints = timeRange.map((oneRange, idx) => {
+                if (!oneRange) {
+                    return '';
+                } else {
+                    const limit  = useISO ? `'${oneRange}'` : oneRange;
+                    return idx === FROM ? `${timeColumn} >= ${limit}` : `${timeColumn} <= ${limit}`;
+                }
+            });
+
+            if (!timeConstraints[FROM] || !timeConstraints[TO]) {
+                where = timeConstraints[FROM] + timeConstraints[TO];
+            } else {
+                where =`(${timeConstraints[FROM]} AND ${timeConstraints[TO]})`;
+            }
         }
     }
+    const allValid = Array.from(fieldsValidity.values()).every((validity) => {return validity.valid;});
+    if (newFields) {
+        for (const [key, validity] of fieldsValidity.entries()) {
+            Object.assign(newFields[key], validity);
+            if (has(newFields[key], 'nullAllowed')) {
+                newFields[key].nullAllowed = nullAllowed;
+                newFields[key].valid = panelActive ? validity.valid : true;
+            }
+        }
+        Object.assign(newFields[TemporalPanel], {[PanelValid]: retval.valid, [PanelMessage]: retval.message});
+    }
+    retval.valid = allValid;
     retval.where = where;
     return retval;
 }
@@ -671,197 +989,20 @@ function makeTemporalConstraints(fields, columnsModel) {
 export function tableSearchMethodsConstraints(columnsModel) {
     // construct ADQL string here
     const fields = FieldGroupUtils.getGroupFields(skey);
-
-    let   adql;
-    const validInfo = validateConstraints(fields);
-    if (!validInfo.valid) {
-         adql = {valid: false, message: validInfo.message, title: 'constraints entry error'};
-         showInfoPopup(adql.message, adql.title);
-         return adql;
+    const {adqlResults} = fields;
+    if (adqlResults){
+        return {valid: true, where: adqlResults.adqlConstraints.join(' AND ')};
     }
-
-    const spatialConstraints = isPanelChecked(Spatial, fields) ? makeSpatialConstraints(fields, columnsModel)
-                                                               : clone(defaultSpatialConstraints);
-    const timeConstraints = isPanelChecked(Temporal, fields) ? makeTemporalConstraints(fields, columnsModel)
-                                                             : clone(defaultTemporalConstraints);
-
-    adql = [spatialConstraints, timeConstraints].reduce((p, oneCondition) => {
-        p.valid = p.valid && oneCondition.valid;
-        if (!p.valid) {
-            p.where = '';
-            if (oneCondition.message && !p.message) {
-                p.message = oneCondition.message;
-                p.title = oneCondition.title;
-            }
-        } else {
-            if (p.where && oneCondition.where) {
-                p.where += ' AND (' + oneCondition.where + ')';
-            } else {
-                p.where += oneCondition.where;
-            }
-        }
-
-        return p;
-
-    }, {where: '', valid: true, message: '', title: ''});
-
-    if (!adql.valid) {
-        showInfoPopup((adql.message || 'search constraints error'),  (adql.title ||'search error'));
-    }
-
-    return adql;
+    return {valid: true};
 }
 
-function tapSearchMethodReducer(columnsModel) {
+function buildTapSearchMethodReducer(columnsModel, setAdqlResults) {
     return (inFields, action) => {
 
         if (!inFields)  {
              return fieldInit(columnsModel);
         } else {
-            const {fieldKey, value, displayValue}= action.payload;
             const rFields = clone(inFields);
-
-            const setSearchPanelChecked = (key) => {
-                const panel = [ServerParams.USER_TARGET_WORLD_PT, RadiusSize, PolygonCorners].includes(key) ? Spatial :
-                    ([TimeFrom, TimeTo, TimePickerFrom, TimePickerTo].includes(key) ? Temporal : null);
-
-                if (panel && !isPanelChecked(panel, rFields)) {
-                    const val = () => {
-                        if (displayValue || typeof value !== 'string') {
-                            return displayValue;
-                        } else {
-                            return value;
-                        }
-                    };
-
-                    if (val()) {
-                        const panelChk = panel.toLowerCase()+'Check';
-                        set(rFields, [panelChk, 'value'], panel);
-                    }
-                }
-            };
-
-            const onChangePolygonCoordinates = () => {
-                rFields.imageCornerCalc = clone(inFields.imageCornerCalc, {value: 'user'});
-                setSearchPanelChecked(fieldKey);
-                validateSpatialConstraints(inFields, rFields);
-            };
-
-            const onChangeToPolygonMethod = () => {
-                const cornerCalcV = get(inFields.imageCornerCalc, 'value', 'user');
-                const pv = getActivePlotView(visRoot());
-
-
-                if (pv && (cornerCalcV === 'image' || cornerCalcV === 'viewport' || cornerCalcV === 'area-selection')) {
-                    const plot = primePlot(pv);
-
-                    if (plot) {
-                        const sel = plot.attributes[PlotAttribute.SELECTION];
-                        if (!sel && cornerCalcV === 'area-selection') {
-                            rFields.imageCornerCalc = clone(inFields.imageCornerCalc, {value: 'image'});
-                        }
-                        const {value:cornerCalcV2}= rFields.imageCornerCalc;
-                        const v = calcCornerString(pv, cornerCalcV2);
-                        rFields.polygoncoords = clone(inFields.polygoncoords, {value: v});
-                    }
-                }
-                validateSpatialConstraints(inFields, rFields);
-            };
-
-            const onChangeTimeField = () => {
-                // only update picker & mjd when there is no pop-up picker (time input -> picker or mjd)
-                if (!isDialogVisible(POPUP_DIALOG_ID)) {
-                    const {valid, message} = get(inFields, fieldKey, {});
-                    const timeMode = get(inFields, [TimeOptions, 'value']);
-                    const mjdKey = get(timeKeyMap, [fieldKey, MJD]);
-                    const isoKey = get(timeKeyMap, [fieldKey, ISO]);
-                    const updateValue = timeMode === MJD ? value : (valid ? fMoment(tryConvertToMoment(value, true)): value);
-
-                    // convert value for the other time mode
-                    const crtFieldKey = timeMode === MJD ? mjdKey : isoKey;
-                    const convertFunc = timeMode === MJD ? convertMJDToISO : convertISOToMJD;
-                    const validateFunc = timeMode === MJD ? validateDateTime : validateMJD;
-                    const secondFieldKey = timeMode === MJD ? isoKey : mjdKey;
-
-                    const secondVal = convertFunc(updateValue);
-                    const secondValInfo = validateFunc(secondVal);
-
-                    rFields[crtFieldKey] = clone(inFields[crtFieldKey], {value: updateValue, valid, message});
-                    rFields[secondFieldKey] = clone(inFields[secondFieldKey], {
-                        value: secondValInfo.value,
-                        valid: secondValInfo.valid,
-                        message: secondValInfo.message
-                    });
-                    setSearchPanelChecked(fieldKey);
-                    validateTemporalConstraints(inFields, rFields);
-                }
-            };
-
-            const onChangeTimeMode = () => {
-                // update Time fields (from and to) and the feedback below based on the selected mode, iso or mjd
-                const timeInfos = [TimeFrom, TimeTo].map((tKey) => {
-                    return [ISO, MJD].reduce((prev, option) => {
-                        const valKey = get(timeKeyMap, [tKey, option]);
-                        prev[option] = get(inFields, [valKey]);
-
-                        return prev;
-                    }, {});
-                });
-                const timeMode = value;
-
-                [TimeFrom, TimeTo].forEach((timeKey, idx) => {
-                    const showHelp = isShowHelp(timeInfos[idx][ISO].value, timeInfos[idx][MJD].value);
-                    const feedback = formFeedback(timeInfos[idx][ISO].value, timeInfos[idx][MJD].value);
-                    let tooltip
-                    // const tooltip = `'${idx === FROM ? 'from' : 'to'}' time in ${timeMode} mode`;
-
-                    if (timeMode==='iso') {
-                        tooltip= `${idx===FROM?'From:':'To:'} select ISO 8601 time format (e.g., 2021-03-20)`;
-                    }
-                    else {
-                        tooltip= `${idx===FROM?'From:':'To:'} Select Modified Julian Date time format (e.g., 59293.1)`;
-                    }
-
-                    rFields[timeKey] = clone(inFields[timeKey], { value: timeInfos[idx][timeMode].value,
-                        valid: timeInfos[idx][timeMode].valid,
-                        message: timeInfos[idx][timeMode].message,
-                        tooltip, showHelp, feedback, timeMode});
-                });
-                validateTemporalConstraints(inFields, rFields);
-            };
-
-            const onChangeDateTimePicker = () => {
-                // update MJD & TimeFrom (TimeTo) when there is pop-up picker (picker -> time field & mjd)
-                if (isDialogVisible(POPUP_DIALOG_ID)) {
-                    const {valid, message} = get(inFields, fieldKey) || {};
-                    const timeKey = (fieldKey === TimePickerFrom) ? TimeFrom : TimeTo;
-                    const mjdKey = get(timeKeyMap, [timeKey, MJD]);
-
-                    const mjdVal = convertISOToMJD(value);
-                    const mjdInfo = validateMJD(mjdVal);
-
-                    rFields[mjdKey] = clone(inFields[mjdKey], {
-                        value: mjdInfo.value, valid: mjdInfo.valid,
-                        message: mjdInfo.message
-                    });
-                    const showHelp = isShowHelp(value, mjdInfo.value);
-                    const feedback = formFeedback(value, mjdInfo.value);
-
-                    rFields[timeKey] = clone(inFields[timeKey], {value, message, valid, showHelp, feedback,
-                        timeMode: ISO});
-
-                    setSearchPanelChecked(fieldKey);
-                    validateTemporalConstraints(inFields, rFields);
-                }
-            };
-
-            const onChangeSearchCheckBox = (key) => {
-                if (key === SpatialCheck) {
-                    return validateSpatialConstraints(inFields, rFields, value !== Spatial );
-                } else if (key === TemporalCheck) {
-                    return validateTemporalConstraints(inFields, rFields, value !== Temporal );
-                }
-            };
 
             const onResetColumnsTable = () => {
                 const cols = getAvailableColumns(columnsModel);
@@ -875,52 +1016,56 @@ function tapSearchMethodReducer(columnsModel) {
                 Object.assign(rFields[TemporalColumns],
                                         {validator: getColValidator(cols, false, false), value: '', valid: true});
 
-                validateSpatialConstraints(inFields, rFields);
                 validateTemporalConstraints(inFields, rFields);
             };
 
 
             switch (action.type) {
+
                 case FieldGroupCntlr.VALUE_CHANGE:
-                    if (fieldKey === PolygonCorners) {
-                        onChangePolygonCoordinates(rFields);
-                    } else if (fieldKey === SpatialMethod && value === TapSpatialSearchMethod.Polygon.key) {
-                        onChangeToPolygonMethod();
-                    } else if (fieldKey === ImageCornerCalc) {
-                        onChangeToPolygonMethod();
-                    } else if (fieldKey === TimeFrom || fieldKey === TimeTo) { // update mjd & picker
-                        onChangeTimeField();
-                    } else if (fieldKey === TimeOptions) {    // time mode changes => update timefrom and timeto value
-                        onChangeTimeMode();
-                    } else if (fieldKey === TimePickerFrom || fieldKey === TimePickerTo) { // update mjd & time fields
-                        onChangeDateTimePicker();
-                    } else if (fieldKey === SpatialCheck || fieldKey === TemporalCheck || fieldKey === WavelengthCheck) {
-                        onChangeSearchCheckBox(fieldKey);
-                    } else {
-                        setSearchPanelChecked(fieldKey);
-
-                        const panel = isFieldInPanel(fieldKey);
-
-                        if (panel) {
-                            if (panel === Spatial) {
-                                validateSpatialConstraints(inFields, rFields);
-                            } else if (panel === Temporal) {
-                                validateTemporalConstraints(inFields, rFields);
+                    Array.from(chainedReducers.values()).forEach((chainedReducer) => {
+                        chainedReducer(inFields, action, rFields);
+                    });
+                    const adqlConstraints = [];
+                    const adqlConstraintErrorsArray = [];
+                    const siaConstraints = [];
+                    // adqlComponents can apparently be modified during iteration in the forEach...
+                    Array.from(constraintReducers.adqlReducerMap.values()).forEach((adqlReducer) => {
+                        const {adqlConstraint, adqlConstraintErrors} = adqlReducer(inFields, rFields);
+                        if (!adqlConstraintErrors?.length) {
+                            if (adqlConstraint) {
+                                adqlConstraints.push(adqlConstraint);
                             }
+                        } else {
+                            adqlConstraintErrorsArray.push(adqlConstraintErrors);
                         }
-                    }
+                    });
+                    Array.from(constraintReducers.siaReducerMap.values()).forEach((siaReducer) => {
+                        const {siaConstraint, siaConstraintErrors} = siaReducer(inFields);
+                        if (!siaConstraintErrors?.length) {
+                            if (siaConstraint) {
+                                siaConstraints.push(siaConstraint);
+                            }
+                        } else {
+                            console.log(siaConstraintErrors);
+                        }
+                    });
+                    const adqlResults = {adqlConstraints, adqlConstraintErrors: adqlConstraintErrorsArray};
+                    rFields[AdqlResults] = adqlResults;
                     break;
                 case FieldGroupCntlr.MOUNT_FIELD_GROUP:
                     if (columnsModel.tbl_id !== get(inFields, [CrtColumnsModel, 'value'])) {
                         onResetColumnsTable();
                     }
                     break;
+                default:
+                    console.warn(`Unhandled field group action: ${action.type}`);
             }
-
             return rFields;
         }
     };
 }
+
 
 /**
  * Assembles an array of objects with column attributes in the format that ColumnFld accepts
@@ -956,34 +1101,6 @@ function formCenterColumns(columnsTable) {
     return centerColObj;
 }
 
-/**
- * temporal column validator
- * @param columnsTable
- * @returns {Function}
- */
-/*
-function temporalColumnValidator(columnsTable) {
-    return (val) => {
-        let   retval = {valid: true, message: ''};
-        const columnNames = getColumnValues(columnsTable, 'column_name');
-        const names = val.trim().split(',').map((n) => n.trim());
-
-        if (val.trim() && names.length >= 2) {
-            retval = {valid: false,
-                      message: 'please enter a single column name like <column name>'};
-        } else {
-            const invalidName = names.find((oneName) => {
-                return oneName && !columnNames.includes(oneName);
-            });
-            if (invalidName) {
-                retval = {valid: false, message: 'invalid column name'};
-            }
-        }
-        return retval;
-    };
-}
-*/
-
 const getFieldValidity  = (fields, fieldKey, nullAllowed) => {
     const {valid=true, message, value, displayValue} = get(fields, fieldKey) || {};
     const val = displayValue || value;
@@ -1007,114 +1124,7 @@ const updateMessage = (retval, panel, key) => {
     return retval;
 };
 
-/**
- * validate all fields in spatial search panel
- * if newFields is not defined, return true/false valid depending if any entry with invalid value exists.
- * if newFields is defined, the validity of the relevant field is recalculated and updated depending on if
- * spatial search panel is checked or not
- * @param fields
- * @param newFields
- * @param nullAllowed
- * @returns {{valid: boolean}}
- */
-function validateSpatialConstraints(fields, newFields, nullAllowed) {
-    let allValid = true;
-    const opFields = newFields || fields;
 
-    if (isUndefined(nullAllowed) && newFields) {
-        nullAllowed = !isPanelChecked(Spatial, newFields);
-    }
-
-    const checkField = (key) => {
-        const retval = getFieldValidity(opFields, key, nullAllowed);
-        if (newFields) {
-            Object.assign(newFields[key], {valid: retval.valid, message: retval.message});
-
-            if (has(newFields[key], 'nullAllowed')) {
-                newFields[key].nullAllowed = nullAllowed;
-            }
-
-            allValid = allValid&&retval.valid;
-        }
-        return retval;
-    };
-
-    let retval;
-
-    const updateRetMessage = (key) => {
-        return updateMessage(retval, Spatial, key);
-    };
-
-    retval = checkField(CenterLonColumns);
-
-    if (!newFields && !retval.valid) {
-        return updateRetMessage(CenterLonColumns);
-    }
-
-    retval = checkField(CenterLatColumns);
-
-    if (!newFields && !retval.valid) {
-        return updateRetMessage(CenterLatColumns);
-    }
-
-    const searchMethod = get(opFields, [SpatialMethod, 'value']);
-
-    if (searchMethod ===  TapSpatialSearchMethod.Cone.value) {
-        retval = checkField(ServerParams.USER_TARGET_WORLD_PT);
-
-        if (!newFields && !retval.valid) {
-            return  updateRetMessage(ServerParams.USER_TARGET_WORLD_PT);
-        }
-
-        retval = checkField(RadiusSize);
-
-        if (!newFields && !retval.valid) {
-            return updateRetMessage(RadiusSize);
-        }
-    } else if (searchMethod === TapSpatialSearchMethod.Polygon.value) {
-        const {polygoncoords} = opFields;
-
-        // check any polygon pair is valid, skip the pair check in case this field is not added yet.
-        if (polygoncoords) {
-            const rVal = polygoncoords.value ? polygoncoords.value.trim() : '';
-            if (rVal) {
-                const pairs = rVal.split(',').filter((onePair) => onePair);
-
-                if (pairs.length < 3) {
-                    retval = {valid: false, message: 'not enough pairs'};
-                } else {
-                    const badCorner = pairs.findIndex((onePoint) => {
-                        const corner = onePoint.trim().split(' ');
-
-                        return (corner.length !== 2) || isNaN(Number(corner[0])) || isNaN(Number(corner[1]));
-                    });
-
-
-                    retval = badCorner >= 0 ? {valid: false, message: 'wrong corner pair'} : {valid: true, message: ''};
-                }
-            } else {
-                retval = {valid: nullAllowed, message: nullAllowed ? '' : 'empty entry'};
-            }
-
-            if (newFields) {
-                Object.assign(newFields.polygoncoords, {valid: retval.valid, message: retval.message});
-                allValid = allValid&&retval.valid;
-            }
-
-            if (!newFields && !retval.valid) {
-                return updateRetMessage(PolygonCorners);
-            }
-        }
-    }
-    if (newFields) {
-        retval = {valid: allValid, message: allValid ? '' : SomeFieldInvalid};
-        Object.assign(newFields[SpatialPanel], {[PanelValid]: retval.valid, [PanelMessage]: retval.message} );
-
-        return retval;
-    } else {
-        return {valid: true};
-    }
-}
 
 /**
  * validate all fields in temporal search panel
@@ -1205,73 +1215,9 @@ function validateTemporalConstraints(fields, newFields, nullAllowed) {
     }
 }
 
-/**
- * pass the validity of the constraint entries on the checked search panel before forming the ADQL query
- * @param fields
- * @param columnsModel - if passed the do even more validation
- * @returns {*}
- */
-export function validateConstraints(fields, columnsModel=undefined) {
-    // spatial constraints
-    let retval = {valid: true};
-
-    if (isPanelChecked(Spatial, fields)) {
-        retval = validateSpatialConstraints(fields);
-
-        if (columnsModel && retval.valid) {
-            const spacRet= makeSpatialConstraints(fields, columnsModel);
-            if (retval.valid) retval.valid= Boolean(spacRet.valid && spacRet.where);
-        }
-        if (!retval.valid) return retval;
-    }
-
-    if (isPanelChecked(Temporal, fields)) {
-        retval = validateTemporalConstraints(fields);
-        if (columnsModel && retval.valid) {
-            const temporalRet= makeTemporalConstraints(fields, columnsModel);
-            if (retval.valid) retval.valid= Boolean(temporalRet.valid && temporalRet.where);
-        }
-    }
-    return retval;
-}
-
 function fieldInit(columnsTable) {
-    const centerColObj = formCenterColumns(columnsTable);
-    const cols = getAvailableColumns(columnsTable);
-
     return (
         {
-            [CenterLonColumns]: {
-                fieldKey: CenterLonColumns,
-                value: centerColObj.lon,
-                tooltip: 'Table column that specifies longitude position',
-                label: getLabel(CenterLonColumns, ':'),
-                labelWidth: LabelWidth,
-                validator: getColValidator(cols, false, false)
-            },
-            [CenterLatColumns]: {
-                fieldKey: CenterLatColumns,
-                value: centerColObj.lat,
-                tooltip: 'Table column that specifies latitude position',
-                label: getLabel(CenterLatColumns, ':'),
-                labelWidth: LabelWidth,
-                validator: getColValidator(cols, false, false)
-            },
-            [TemporalColumns]: {
-                fieldKey: TemporalColumns,
-                value: '',
-                tooltip: 'Column for temporal search',
-                label: getLabel(TemporalColumns, ':'),
-                labelWidth: LabelWidth,
-                validator: getColValidator(cols, false, false)
-            },
-            [SpatialMethod]: {
-                fieldKey: SpatialMethod,
-                tooltip: 'Select spatial search method',
-                label: getLabel(SpatialMethod, ':'),
-                labelWidth: LableSaptail,
-                value: TapSpatialSearchMethod.Cone.value
-            },
             [ImageCornerCalc]: {
                 fieldKey: ImageCornerCalc,
                 value: 'image'
@@ -1288,39 +1234,6 @@ function fieldInit(columnsTable) {
                 fieldKey: DatePickerOpenStatus,
                 value: [false, false]
             },
-            [TimePickerFrom]: {
-                fieldKey: TimePickerFrom,
-                value: ''
-            },
-            [TimePickerTo]: {
-                fieldKey: TimePickerTo,
-                value: ''
-            },
-            [TimeOptions]: {
-                fieldKey: TimeOptions,
-                value: ISO,
-                tooltip:  'Choose between:\nISO 8601 time format (e.g., 2021-03-20)\nor\nModified Julian Date time format (e.g., 59293.1)'
-            },
-            [MJDFrom]: {
-                fieldKey: MJDFrom,
-                value: ''
-            },
-            [MJDTo]: {
-                fieldKey: MJDTo,
-                value: ''
-            },
-            [TimeFrom]:{
-                fieldKey: TimeFrom,
-                value: '',
-                validator: timeValidator,
-                tooltip:  'From: Select ISO 8601 time format (e.g., 2021-03-20)',
-            },
-            [TimeTo]:{
-                fieldKey: TimeTo,
-                value: '',
-                validator: timeValidator,
-                tooltip: 'To: Select ISO 8601 time format (e.g., 2021-03-20)'
-            }
         }
     );
 }

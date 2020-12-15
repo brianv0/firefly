@@ -45,6 +45,25 @@
                 charts: {
                     singleTraceUI: false
                 },
+                obsCore: {
+                    filterDefinitions: [
+                        {
+                            name: 'LSST',
+                            options: [
+                                {label: 'u', value : '367'},
+                                {label: 'g', value : '483'},
+                                {label: 'r', value : '622'},
+                                {label: 'i', value : '755'},
+                                {label: 'z', value : '869'},
+                                {label: 'y', value : '971'},
+                            ],
+                        },
+                        {
+                            name: 'WISE',
+                            options: [{label: 'W1', value: '1'}, {label: 'W2', value: '2'}, {label: 'W3', value: '3'}]
+                        }
+                    ],
+                },
                 hips : {
                     useForCoverage: true,
                     useForImageSearch: true,

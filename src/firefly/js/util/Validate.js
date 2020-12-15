@@ -168,6 +168,29 @@ export const isPositiveFiniteNumber = (description, valStr)=>{
 
 };
 
+/**
+ * Numbers that must be positive, but infinity as denoted by infValue is
+ * allowed.
+ * @param description Field name
+ * @param valStr value of the field
+ * @param allowedInfinityValue Allowed infinity value for the field
+ * @returns {{valid: boolean, message: string}}
+ */
+const isFloatOrInfiniteNumber = (description, valStr, allowedInfinityValue)=> {
+    const allowedSign = allowedInfinityValue === Infinity ? '+' : '-';
+    var retval = {valid: true, message: ''};
+    if (valStr) {
+        if (valStr.endsWith('Inf')) {
+            valStr = valStr.replaceAll('Inf', 'Infinity');
+        }
+        var aNumber = Number(valStr);
+        if (isNaN(aNumber) || (aNumber < 0 && aNumber !== allowedInfinityValue)) {
+            retval.valid = false;
+            retval.message = description + `: must be a positive float or ${allowedSign}Inf`;
+        }
+    }
+    return retval;
+};
 
 export const isInt = function(description, valStr) {
     var retval= { valid : true, message : '' };
@@ -197,7 +220,7 @@ export const intValidator = function(min,max,description) {
 };
 
 export const floatValidator = function(min,max,description) {
-    return (val) => floatRange(min, max, description, val);
+    return (val) => floatRange(min, max, null, description, val);
 };
 
 export const urlValidator = function(description) {
@@ -210,6 +233,14 @@ export const emailValidator = function(description) {
 
 export const dateValidator = function(description) {
     return (val) => validateDate(description, val);
+};
+
+export const maximumPositiveFloatValidator = function (description) {
+    return (val) => isFloatOrInfiniteNumber(description, val, Infinity);
+};
+
+export const minimumPositiveFloatValidator = function (description) {
+    return (val) => isFloatOrInfiniteNumber(description, val, -Infinity);
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/

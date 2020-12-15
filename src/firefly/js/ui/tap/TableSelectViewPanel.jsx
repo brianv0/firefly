@@ -6,7 +6,7 @@ import {HelpIcon} from '../HelpIcon';
 import {dispatchValueChange} from '../../fieldGroup/FieldGroupCntlr.js';
 import {getColumnValues} from '../../tables/TableUtil.js';
 
-import {TableSearchMethods, SpattialPanelWidth} from './TableSearchMethods.jsx';
+import {TableSearchMethods, SpatialPanelWidth} from './TableSearchMethods.jsx';
 import {AdvancedADQL} from './AdvancedADQL.jsx';
 import {
     loadTapColumns,
@@ -14,7 +14,9 @@ import {
     loadTapSchemas,
     getTapBrowserState,
     setTapBrowserState,
-    tapHelpId
+    tapHelpId,
+    updateTapBrowserState,
+    loadObsCoreSchemaTables,
 } from './TapUtil.js';
 import {NameSelect, NameSelectField} from './Select.jsx';
 
@@ -22,6 +24,7 @@ import {TableColumnsConstraints, TableColumnsConstraintsToolbar} from './TableCo
 
 
 import './TableSelectViewPanel.css';
+import {matchesObsCoreHeuristic} from '../../util/VOAnalyzer';
 
 
 
@@ -71,17 +74,18 @@ function useStateRef(initialState){
 
 export function BasicUI(props) {
     const tapFluxState = getTapBrowserState();
-    // const isObsTap = props.obsTap !== undefined ? props.obsTap : false;
     const [error, setError] = useState(undefined);
     const [serviceUrl, serviceUrlRef, setServiceUrl] = useStateRef(tapFluxState.serviceUrl || props.serviceUrl);
     const [schemaName, schemaRef, setSchemaName] = useStateRef(tapFluxState.schemaName || props.initArgs.schema);
     const [tableName, tableRef, setTableName] = useStateRef(tapFluxState.tableName || props.initArgs.table);
+    const [obsCoreTables, setObsCoreTables] = useState(tapFluxState.obsCoreTables || undefined);
+    const [obsCoreEnabled, setObsCoreEnabled] = useState(tapFluxState.obsCoreEnabled || false);
     const [schemaOptions, setSchemaOptions] = useState();
     const [tableOptions, setTableOptions] = useState();
     const [columnsModel, setColumnsModel] = useState();
 
-    const splitDef = SpattialPanelWidth+80;
-    const splitMax = SpattialPanelWidth+80;
+    const splitDef = SpatialPanelWidth+80;
+    const splitMax = SpatialPanelWidth+80;
 
     const loadSchemas = (requestServiceUrl, requestSchemaName=undefined, requestTableName=undefined) => {
         setError(undefined);
@@ -89,7 +93,11 @@ export function BasicUI(props) {
         setTableName(undefined);
         setTableOptions(undefined);
         setColumnsModel(undefined);
+        setObsCoreTables(undefined);
+        setObsCoreEnabled(undefined);
         dispatchValueChange({groupKey: gkey, fieldKey: 'tableName', value: undefined});
+        // update state for higher level components that might rely on obsCoreTables
+        updateTapBrowserState({obsCoreTables: undefined});
 
         loadTapSchemas(requestServiceUrl).then((tableModel) => {
             if (serviceUrlRef.current !== requestServiceUrl) {
@@ -118,6 +126,14 @@ export function BasicUI(props) {
                 setSchemaName(requestSchemaName);
                 setSchemaOptions(schemaOptions);
             }
+        });
+
+        loadObsCoreSchemaTables(requestServiceUrl).then((tableModel) => {
+            const obsCoreTablesResponse = tableModel.tableData.data || undefined;
+            setObsCoreTables(obsCoreTablesResponse);
+            // Update state early for ObsCore support
+            // we'll still have to wait for loadTables and loadColumns
+            updateTapBrowserState({obsCoreTables: obsCoreTablesResponse});
         });
     };
 
@@ -163,8 +179,12 @@ export function BasicUI(props) {
                 return;
             }
             setColumnsModel(columnsModel);
-            setTapBrowserState({serviceUrl: requestServiceUrl, schemaName: requestSchemaName, schemaOptions,
-                tableName: requestTableName, tableOptions, columnsModel});
+            // May be redundant in a way - we know obsCoreTables should already be set,
+            // and we should be able to just check the names, but this is a bit more robust (probably?)
+            var matchesObsCore = matchesObsCoreHeuristic(schemaName, tableName, columnsModel);
+            setObsCoreEnabled(matchesObsCore);
+            setTapBrowserState({serviceUrl: requestServiceUrl, schemaName: requestSchemaName, schemaOptions: schemaOptions,
+                tableName: requestTableName, tableOptions: tableOptions, columnsModel: columnsModel, obsCoreEnabled: matchesObsCore, obsCoreTables: obsCoreTables});
         });
     };
     useEffect(() => {
@@ -240,7 +260,7 @@ export function BasicUI(props) {
                 <div className='expandable'>
                     <SplitPane split='vertical' maxSize={splitMax} mixSize={20} defaultSize={splitDef}>
                         <SplitContent>
-                            {columnsModel ?  <TableSearchMethods initArgs={props.initArgs} columnsModel={columnsModel}/>
+                            {columnsModel ?  <TableSearchMethods initArgs={props.initArgs} columnsModel={columnsModel} obsCoreEnabled={obsCoreEnabled}/>
                                 : <div className='loading-mask'/>
                             }
                         </SplitContent>
