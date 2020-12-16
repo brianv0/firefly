@@ -103,6 +103,7 @@ export class SuggestBoxInputFieldView extends PureComponent {
         this.state = {
             isOpen: false,
             displayValue: props.value,
+            validator: props.validator,
             valid: get(props, 'valid', true),
             message: get(props.message, ''),
             inputWidth: undefined,
@@ -120,9 +121,9 @@ export class SuggestBoxInputFieldView extends PureComponent {
 
 
     static getDerivedStateFromProps(props,state) {
-        const {valid, message, value} = props;
-        if (valid !== state.valid || message !== state.message || value !== state.displayValue) {
-            return {valid, message, displayValue: value};
+        const {valid, message, value, validator} = props;
+        if (valid !== state.valid || message !== state.message || value !== state.displayValue || validator !== state.validator) {
+            return {valid, message, displayValue: value, validator};
         }
         return null;
     }
