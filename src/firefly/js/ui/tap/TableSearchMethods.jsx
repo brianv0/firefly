@@ -167,7 +167,7 @@ function getLabel(key, trailing='') {
     return l ? l+trailing  : l;
 }
 
-export class TableSearchMethods extends PureComponent {
+class ClassBasedTableSearchMethods extends PureComponent {
     constructor(props) {
         super(props);
         this.state = Object.assign(this.nextState(props));
@@ -212,6 +212,33 @@ export class TableSearchMethods extends PureComponent {
     }
 }
 
+const FunctionalTableSearchMethods = (props) => {
+    const [fields, setFields] = useState(FieldGroupUtils.getGroupFields(skey));
+    // FIXME: Rationalize use of state, props, etc...
+    //const [columnsModel, setColumnsModel] = useState(props ? props.columnsModel : getTblById(get(fields, [CrtColumnsModel, 'value'])));
+    const columnsModel = props.columnsModel;
+    const groupKey = skey;
+
+    useEffect(() => {
+        setFields(FieldGroupUtils.getGroupFields(skey));
+        //return flux.addListener(() => {
+        //    // FIXME: Do we need to add a removal listener?
+        //})
+    }, []);
+
+    const obsCoreEnabled = props.obsCoreEnabled;
+    const cols = getAvailableColumns(columnsModel);
+    return (
+        <FieldGroup style={{height: '100%', overflow: 'auto'}}
+                    groupKey={groupKey} keepState={true} reducerFunc={tapSearchMethodReducer(columnsModel)}>
+            <SpatialSearch {...{cols, groupKey, fields, initArgs:props.initArgs, obsCoreEnabled}} />
+            <TemporalSearch {...{cols, groupKey, fields, obsCoreEnabled}} />
+            {false && <WavelengthSearch {...{cols, groupKey, fields, initArgs:props.initArgs}} />}
+        </FieldGroup>
+    );
+}
+
+export const TableSearchMethods = FunctionalTableSearchMethods;
 
 const showTimePicker = (loc, show) => {
     const timeKey = loc === FROM ? TimeFrom : TimeTo;
