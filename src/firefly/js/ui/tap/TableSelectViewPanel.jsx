@@ -14,7 +14,9 @@ import {
     loadTapSchemas,
     getTapBrowserState,
     setTapBrowserState,
-    tapHelpId
+    tapHelpId,
+    updateTapBrowserState,
+    loadObsCoreSchemaTables,
 } from './TapUtil.js';
 import {NameSelect, NameSelectField} from './Select.jsx';
 
@@ -22,7 +24,7 @@ import {TableColumnsConstraints, TableColumnsConstraintsToolbar} from './TableCo
 
 
 import './TableSelectViewPanel.css';
-
+import {matchesObsCoreHeuristic} from '../../util/VOAnalyzer';
 
 
 
@@ -70,6 +72,8 @@ export function BasicUI(props) {
     const [serviceUrl, serviceUrlRef, setServiceUrl] = useStateRef(tapFluxState.serviceUrl || props.serviceUrl);
     const [schemaName, schemaRef, setSchemaName] = useStateRef(tapFluxState.schemaName || props.initArgs.schema);
     const [tableName, tableRef, setTableName] = useStateRef(tapFluxState.tableName || props.initArgs.table);
+    const [obsCoreTables, setObsCoreTables] = useState(tapFluxState.obsCoreTables || undefined);
+    const [obsCoreEnabled, setObsCoreEnabled] = useState(tapFluxState.obsCoreEnabled || false);
     const [schemaOptions, setSchemaOptions] = useState();
     const [tableOptions, setTableOptions] = useState();
     const [columnsModel, setColumnsModel] = useState();
@@ -83,7 +87,11 @@ export function BasicUI(props) {
         setTableName(undefined)
         setTableOptions(undefined)
         setColumnsModel(undefined)
+        setObsCoreTables(undefined);
+        setObsCoreEnabled(undefined);
         dispatchValueChange({groupKey: gkey, fieldKey: 'tableName', value: undefined});
+        // update state for higher level components that might rely on obsCoreTables
+        updateTapBrowserState({obsCoreTables: undefined});
 
         loadTapSchemas(requestServiceUrl).then((tableModel) => {
             if (serviceUrlRef.current !== requestServiceUrl) {
@@ -112,6 +120,13 @@ export function BasicUI(props) {
                 setSchemaName(requestSchemaName)
                 setSchemaOptions(schemaOptions)
             }
+        });
+        loadObsCoreSchemaTables(requestServiceUrl).then((tableModel) => {
+            const obsCoreTablesResponse = tableModel.tableData.data || undefined;
+            setObsCoreTables(obsCoreTablesResponse);
+            // Update state early for ObsCore support
+            // we'll still have to wait for loadTables and loadColumns
+            updateTapBrowserState({obsCoreTables: obsCoreTablesResponse});
         });
     }
 
@@ -157,8 +172,12 @@ export function BasicUI(props) {
                 return;
             }
             setColumnsModel(columnsModel)
+            // May be redundant in a way - we know obsCoreTables should already be set,
+            // and we should be able to just check the names, but this is a bit more robust (probably?)
+            var matchesObsCore = matchesObsCoreHeuristic(schemaName, tableName, columnsModel);
+            setObsCoreEnabled(matchesObsCore);
             setTapBrowserState({serviceUrl: requestServiceUrl, schemaName: requestSchemaName, schemaOptions: schemaOptions,
-                tableName: requestTableName, tableOptions: tableOptions, columnsModel: columnsModel});
+                tableName: requestTableName, tableOptions: tableOptions, columnsModel: columnsModel, obsCoreEnabled: matchesObsCore, obsCoreTables: obsCoreTables});
         });
     }
     useEffect(() => {

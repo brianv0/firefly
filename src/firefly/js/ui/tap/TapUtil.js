@@ -4,6 +4,7 @@ import {doFetchTable, getColumnIdx, sortTableData} from '../../tables/TableUtil.
 import {sortInfoString} from '../../tables/SortInfo.js';
 import {dispatchComponentStateChange, getComponentState} from '../../core/ComponentCntlr.js';
 import {getProp, hashCode} from '../../util/WebUtil.js';
+import {get, isUndefined} from 'lodash';
 
 const logger = Logger('TapUtil');
 const qFragment = '/sync?REQUEST=doQuery&LANG=ADQL&';
@@ -27,14 +28,16 @@ export const tapHelpId = (id) => `tapSearches.${id}`;
 
 export function getTapBrowserState() {
     const tapBrowserState = getComponentState(tapBrowserComponentKey);
-    const {serviceUrl, schemaOptions, schemaName, tableOptions, tableName, columnsModel} = tapBrowserState || {};
-    return {serviceUrl, schemaOptions, schemaName, tableOptions, tableName, columnsModel};
+    const {serviceUrl, schemaOptions, schemaName, tableOptions, tableName, columnsModel, obsCoreEnabled, obsCoreTables} = tapBrowserState || {};
+    return {serviceUrl, schemaOptions, schemaName, tableOptions, tableName, columnsModel, obsCoreEnabled, obsCoreTables};
 }
 
 export function setTapBrowserState({serviceUrl, schemaOptions=undefined, schemaName=undefined,
-                                       tableOptions=undefined, tableName=undefined, columnsModel=undefined}) {
+                                       tableOptions=undefined, tableName=undefined, columnsModel=undefined,
+                                       obsCoreEnabled= false, obsCoreTables=undefined}) {
     dispatchComponentStateChange(tapBrowserComponentKey,
-        {serviceUrl, schemaOptions, schemaName, tableOptions, tableName, columnsModel});
+        {serviceUrl, schemaOptions, schemaName, tableOptions, tableName, columnsModel,
+            obsCoreEnabled, obsCoreTables});
 }
 
 export function updateTapBrowserState(updates) {
@@ -101,7 +104,7 @@ export function loadObsCoreSchemaTables(serviceUrl) {
                 let [s1, s2] = [r1[colIdx], r2[colIdx]];
                 s1 = s1 === '' ? '\u0002' : s1 === null ? '\u0001' : isUndefined(s1) ? '\u0000' : s1;
                 s2 = s2 === '' ? '\u0002' : s2 === null ? '\u0001' : isUndefined(s2) ? '\u0000' : s2;
-                if(s1.toLowerCase() === "ivoa.obscore") {
+                if(s1.toLowerCase() === 'ivoa.obscore') {
                     return -1;
                 }
                 return (s1 > s2 ? 1 : -1);
