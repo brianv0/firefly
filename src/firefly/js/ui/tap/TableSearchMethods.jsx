@@ -48,6 +48,16 @@ const TemporalPanel = 'temporalSearchPanel';
 const TemporalCheck = 'temporalCheck';
 const TemporalColumns = 'temporalColumns';
 const DatePickerOpenStatus = 'datePickerOpenStatus';
+const ExposureColumns = 'exposureColumns';
+const Exposure = 'Exposure';
+const ExposureTimeOptions = 'exposureTimeOptions';
+const ExposureDuration = 'exposureDuration';
+const ExposureDurationPanel = 'exposureDurationPanel';
+const ExposureStartFrom = 'exposureStartFrom';
+const ExposureStartTo = 'exposureStartTo';
+const ExposureEndFrom = 'exposureEndFrom';
+const ExposureEndTo = 'exposureEndTo';
+const ExposureRangeType = 'exposureRangeType';
 const TimePickerFrom = 'timePickerFrom';
 const TimePickerTo = 'timePickerTo';
 const MJDFrom = 'mjdfrom';
@@ -134,8 +144,25 @@ const  timeKeyMap = {
                      [TimeTo]: {
                          [MJD]: MJDTo,
                          [ISO]: TimePickerTo
-                     }
-                };
+                     },
+                    [ExposureStartFrom]: {
+                        [MJD]: MJDFrom,
+                        [ISO]: ExposureStartFrom
+                    },
+                    [ExposureStartTo]: {
+                        [MJD]: MJDTo,
+                        [ISO]: ExposureStartTo
+                    },
+                    [ExposureEndFrom]: {
+                        [MJD]: MJDFrom,
+                        [ISO]: ExposureEndFrom
+                    },
+                    [ExposureEndTo]: {
+                        [MJD]: MJDTo,
+                        [ISO]: ExposureEndTo
+                    }
+
+};
 
 // size used
 const Width_Column = 175;
@@ -263,8 +290,7 @@ const FunctionalTableSearchMethods = (props) => {
 
 export const TableSearchMethods = FunctionalTableSearchMethods;
 
-const showTimePicker = (loc, show) => {
-    const timeKey = loc === FROM ? TimeFrom : TimeTo;
+const showTimePicker = (loc, show, timeKey) => {
     const title = loc === FROM ? 'select "from" time' : 'select "to" time';
     const valueInfo = getTimeValueInfo(ISO, skey, timeKey);
     const pickerKey = get(timeKeyMap, [timeKey, ISO]);
@@ -283,11 +309,11 @@ const showTimePicker = (loc, show) => {
 
 
 
-function changeDatePickerOpenStatus(loc) {
+function changeDatePickerOpenStatus(loc, timeKey) {
     return () => {
         const show = !isDialogVisible(POPUP_DIALOG_ID);
 
-        showTimePicker(loc, show);
+        showTimePicker(loc, show, timeKey);
     };
 }
 
@@ -374,13 +400,13 @@ function TemporalSearch({cols, groupKey, fields}) {
     const showTimeRange = () => {
         const timeOptions = [{label: 'ISO', value: ISO},
                              {label: 'MJD', value: MJD}];
-        const crtTimeMode = get(fields, [TimeOptions, 'value'], ISO);
+        const crtTimeMode = get(fields, [ExposureTimeOptions, 'value'], ISO);
         const icon = crtTimeMode === ISO ? 'calendar' : '';
 
         //  radio field is styled with padding right in consistent with the label part of 'temporal columns' entry
         return (
             <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5, width: SpattialPanelWidth}}>
-                <RadioGroupInputField fieldKey={TimeOptions}
+                <RadioGroupInputField fieldKey={ExposureTimeOptions}
                                       options={timeOptions}
                                       alignment={'horizontal'}
                                       wrapperStyle={{width: LabelWidth, paddingRight:'4px'}}
@@ -390,7 +416,7 @@ function TemporalSearch({cols, groupKey, fields}) {
                                  groupKey={skey}
                                  timeMode={crtTimeMode}
                                  icon={icon}
-                                 onClickIcon={changeDatePickerOpenStatus(FROM)}
+                                 onClickIcon={changeDatePickerOpenStatus(FROM, TimeFrom)}
                                  feedbackStyle={{height: 100}}
                                  inputWidth={Width_Column}
                                  inputStyle={{overflow:'auto', height:16}}
@@ -401,7 +427,7 @@ function TemporalSearch({cols, groupKey, fields}) {
                                groupKey={skey}
                                timeMode={crtTimeMode}
                                icon={icon}
-                               onClickIcon={changeDatePickerOpenStatus(TO)}
+                               onClickIcon={changeDatePickerOpenStatus(TO, TimeTo)}
                                feedbackStyle={{height: 100}}
                                inputWidth={Width_Column}
                                inputStyle={{overflow:'auto', height:16}}
@@ -433,6 +459,143 @@ TemporalSearch.propTypes = {
     fields: PropTypes.object
 };
 
+
+function ExposureDurationSearch({cols, groupKey, fields}) {
+    const [rangeType, setRangeType]= useState('range');
+
+    useEffect(() => {
+        return FieldGroupUtils.bindToStore(groupKey, (fields) => {
+            setRangeType(getFieldVal(groupKey, ExposureRangeType, rangeType));
+        });
+    }, []);
+
+    const showExpsoureRange = () => {
+        const timeOptions = [{label: 'ISO', value: ISO},
+            {label: 'MJD', value: MJD}];
+        const exposureRangeOptions = [{label: 'Range', value: 'range'},
+            {label: 'Completed in the Last', value: 'since'}];
+        const crtTimeMode = get(fields, [TimeOptions, 'value'], ISO);
+        const icon = crtTimeMode === ISO ? 'calendar' : '';
+
+        //  radio field is styled with padding right in consistent with the label part of 'temporal columns' entry
+        return (
+            <div style={{display: 'block', marginTop: '5px'}}>
+                <RadioGroupInputField
+                    fieldKey={ExposureRangeType}
+                    options={exposureRangeOptions}
+                    alignment={'horizontal'}
+                />
+                <div>
+                {rangeType === 'range' &&
+                <div style={{display: 'block', marginLeft: LeftInSearch, marginTop: 5}}>
+                    <RadioGroupInputField
+                        fieldKey={TimeOptions}
+                        options={timeOptions}
+                        alignment={'horizontal'}
+                        wrapperStyle={{width: LabelWidth, paddingRight: '4px'}}
+                    />
+                    <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5}}>
+                        <div title='Start Time' style={{display: 'inline-block', paddingRight: '4px', width: '106px'}}>Start Time</div>
+                        <div style={{width: Width_Time_Wrapper}}>
+                            <TimePanel
+                                fieldKey={ExposureStartFrom}
+                                groupKey={skey}
+                                timeMode={crtTimeMode}
+                                icon={icon}
+                                onClickIcon={changeDatePickerOpenStatus(FROM, ExposureStartFrom)}
+                                feedbackStyle={{height: 100}}
+                                inputWidth={Width_Column}
+                                inputStyle={{overflow: 'auto', height: 16}}
+                            />
+                        </div>
+                        <div style={{width: Width_Time_Wrapper}}>
+                            <TimePanel
+                                fieldKey={ExposureStartTo}
+                                groupKey={skey}
+                                timeMode={crtTimeMode}
+                                icon={icon}
+                                onClickIcon={changeDatePickerOpenStatus(TO, ExposureStartTo)}
+                                feedbackStyle={{height: 100}}
+                                inputWidth={Width_Column}
+                                inputStyle={{overflow: 'auto', height: 16}}
+                            />
+                        </div>
+                    </div>
+                    <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5}}>
+                        <div title='End Time' style={{display: 'inline-block', paddingRight: '4px', width: '106px'}}>End Time</div>
+                        <div style={{width: Width_Time_Wrapper}}>
+                            <TimePanel
+                                fieldKey={ExposureEndFrom}
+                                groupKey={skey}
+                                timeMode={crtTimeMode}
+                                icon={icon}
+                                onClickIcon={changeDatePickerOpenStatus(FROM, ExposureEndFrom)}
+                                feedbackStyle={{height: 100}}
+                                inputWidth={Width_Column}
+                                inputStyle={{overflow: 'auto', height: 16}}
+                            />
+                        </div>
+                        <div style={{width: Width_Time_Wrapper}}>
+                            <TimePanel
+                                fieldKey={ExposureEndTo}
+                                groupKey={skey}
+                                timeMode={crtTimeMode}
+                                icon={icon}
+                                onClickIcon={changeDatePickerOpenStatus(TO, ExposureEndTo)}
+                                feedbackStyle={{height: 100}}
+                                inputWidth={Width_Column}
+                                inputStyle={{overflow: 'auto', height: 16}}
+                            />
+                        </div>
+                    </div>
+                </div>
+                }
+                {rangeType === 'since' &&
+                <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5}}>
+                    <ValidationField
+                        fieldKey={'SinceValue'} // FIXME: Introduce SinceValue or similar
+                        groupKey={skey}
+                        // feedbackStyle={{height: 100}}
+                        inputWidth={Width_Column}
+                        inputStyle={{overflow:'auto', height:16}}
+                        validator={fakeValidator}
+                    />
+                    <RadioGroupInputField
+                        fieldKey={'SinceOptions'} // FIXME: Introduce SinceOptions
+                        options={ [{label: 'Hours', value: 'hours'}, {label: 'Days', value: 'days'}, {label: 'Years', value: 'years'}]}
+                        alignment={'horizontal'}
+                    />
+                </div>
+                }
+                </div>
+            </div>
+        );
+    };
+
+    /* FIXME: exposure check */
+    // const message = get(fields, [TemporalCheck, 'value']) === Temporal ?get(fields, [TemporalPanel, PanelMessage], '') :''; /* FIXME: exposure check */
+    return (
+        <FieldGroupCollapsible
+            header={<Header title={Exposure} helpID={tapHelpId('exposureDuration')}
+                            checkID={TemporalCheck}
+                //message={message}
+            />}
+            initialState={{ value: 'closed' }}
+            fieldKey={ExposureDurationPanel}
+            wrapperStyle={{marginBottom: 15}}
+            headerStyle={HeaderFont}>
+            <div style={{marginTop: 5}}>
+                {showExpsoureRange()}
+            </div>
+        </FieldGroupCollapsible>
+    );
+}
+
+ExposureDurationSearch.propTypes = {
+    cols: ColsShape,
+    groupKey: PropTypes.string,
+    fields: PropTypes.object
+};
 
 
 function WavelengthSearch({cols, groupKey, fields, initArgs={}}) {
@@ -768,6 +931,11 @@ function makeSpatialConstraints(fields, columnsModel) {
 function makeTemporalConstraints(fields, columnsModel) {
     const retval = clone(defaultTemporalConstraints);
     const timeColumns = get(fields, [TemporalColumns, 'value'], '').trim().split(',').reduce((p, c) => {
+        if (c.trim()) p.push(c.trim());
+        return p;
+    }, []);
+
+    const exposureColumns = get(fields, [ExposureColumns, 'value'], '').trim().split(',').reduce((p, c) => {
         if (c.trim()) p.push(c.trim());
         return p;
     }, []);
@@ -1457,6 +1625,30 @@ function fieldInit(columnsTable) {
                 tooltip: 'Select ObsCore Dataproduct Subtype name',
                 label: getLabel(ObsCoreSubtype, ':'),
                 labelWidth: LableSaptail
+            },
+            [ExposureStartFrom]:{
+                fieldKey: ExposureStartFrom,
+                value: '',
+                validator: timeValidator,
+                tooltip:  "'Exposure start from' time in iso mode"
+            },
+            [ExposureStartTo]:{
+                fieldKey: ExposureStartTo,
+                value: '',
+                validator: timeValidator,
+                tooltip: "'Exposure start to' time in iso mode"
+            },
+            [ExposureEndFrom]:{
+                fieldKey: ExposureEndFrom,
+                value: '',
+                validator: timeValidator,
+                tooltip:  "'Exposure end from' time in iso mode"
+            },
+            [ExposureEndTo]:{
+                fieldKey: ExposureEndTo,
+                value: '',
+                validator: timeValidator,
+                tooltip: "'Exposure end to' time in iso mode"
             },
             [DatePickerOpenStatus]: {
                 fieldKey: DatePickerOpenStatus,
