@@ -30,6 +30,7 @@ import {getColumnAttribute, tapHelpId, HeaderFont, MJD, ISO} from './TapUtil.js'
 import {HelpIcon} from '../HelpIcon.jsx';
 import {ColsShape, ColumnFld, getColValidator} from '../../charts/ui/ColumnOrExpression';
 import {CheckboxGroupInputField} from '../CheckboxGroupInputField.jsx';
+import {ValidationField} from '../ValidationField.jsx';
 
 export const skey = 'TABLE_SEARCH_METHODS';
 const Spatial = 'Spatial';
@@ -54,6 +55,14 @@ const MJDTo = 'mjdto';
 const TimeFrom = 'timeFrom';
 const TimeTo = 'timeTo';
 const TimeOptions = 'timeOptions';
+const ObsCore = 'ObsCore';
+const ObsCorePanel = 'obsCorePanel';
+const ObsCoreCollection = 'Collection';
+const ObsCoreTypeSelection = 'obsCoreTypeSelection';
+const ObsCoreSubtype = 'Subtype';
+const ObsCoreCalibration = 'Calibration';
+const ObsCoreCalibrationSelection = 'obsCoreCalibrationSelection';
+const SpatialTypeOptions = 'spatialTypeOptions';
 const Wavelength = 'Wavelength';
 const WavelengthPanel = 'wavelengthSearchPanel';
 const WavelengthCheck = 'wavelengthCheck';
@@ -79,6 +88,7 @@ const fieldsMap = {[Spatial]: {
                         [ServerParams.USER_TARGET_WORLD_PT]: {label: 'Coordinates or Object Name'},
                         [RadiusSize]: {label: 'Radius'},
                         [PolygonCorners]:  {label: 'Coordinates'}},
+
                    [Temporal]: {
                         [TemporalPanel]: {label:Temporal},
                         [TemporalColumns]: {label: 'Temporal Column'},
@@ -92,6 +102,12 @@ const fieldsMap = {[Spatial]: {
                         [WavelengthPanel]: {label: Wavelength},
                         [WavelengthColumns]: {label: 'Wavelength Column'}}};
 
+const fakeValidator = (val) => {
+    return {
+        valid: true,
+        message: '',
+    };
+};
 
 const TapSpatialSearchMethod = new Enum({
     'Cone': 'Cone',
@@ -469,6 +485,112 @@ function selectSpatialSearchMethod(groupKey, fields) {
     );
     return spatialSearchList;
 }
+
+const ObsCoreCalibrationLevels = new Enum({
+    '(ALL)': 'ALL',
+    '0': '0',
+    '1': '1',
+    '2': '2',
+    '3': '3',
+    '4': '4',
+});
+
+function calibrationSearchList() {
+    const calibrationOptions = () => {
+        return ObsCoreCalibrationLevels.enums.reduce((p, enumItem)=> {
+            p.push({label: enumItem.key, value: enumItem.value});
+            return p;
+        }, []);
+    };
+
+    const calibrationList = (
+        <div style={{display:'flex', flexDirection:'column', marginTop: '5px'}}>
+            <ListBoxInputField
+                fieldKey={ObsCoreCalibrationSelection}
+                options={calibrationOptions()}
+                multiple={false}
+            />
+        </div>
+    );
+    return calibrationList;
+}
+
+const ObsCoreTypeOptions = new Enum({
+    'IMAGE': 'IMAGE',
+    'CUBE': 'CUBE',
+    'SPECTRUM': 'SPECTRUM',
+    'SED': 'SED',
+    'TIMESERIES': 'TIMESERIES',
+    'EVENT': 'EVENT',
+    'MEASUREMENTS': 'MEASUREMENTS',
+});
+
+function typeSearchList() {
+    const typeOptions = () => {
+        return ObsCoreTypeOptions.enums.reduce((p, enumItem)=> {
+            p.push({label: enumItem.key, value: enumItem.value});
+            return p;
+        }, []);
+    };
+
+    const typeList = (
+        <div style={{display:'flex', flexDirection:'column'}}>
+            <ListBoxInputField
+                fieldKey={ObsCoreTypeSelection}
+                options={typeOptions()}
+                wrapperStyle={{marginRight:'15px', padding:'8px 0 5px 0'}}
+                multiple={false}
+            />
+        </div>
+    );
+    return typeList;
+}
+
+
+function ObsCoreSearch({cols, groupKey, fields}) {
+
+    const showStringField = (fieldKey) => {
+        return (
+            <div style={{marginTop: '5px'}}>
+                <ValidationField
+                    fieldKey={fieldKey}
+                    groupKey={skey}
+                    inputWidth={Width_Column}
+                    inputStyle={{overflow:'auto', height:16}}
+                    label={getLabel(fieldKey)}
+                    labelStyle={{width: '100px'}}
+                    validator={fakeValidator}
+                />
+            </div>
+        );
+    };
+
+    const hasSubType = true; // getColumn(cols, "dataproduct_subtype") || false;
+    const message = get(fields, [TemporalCheck, 'value']) === ObsCore ?get(fields, [ObsCorePanel, PanelMessage], '') :''; /* FIXME: exposure check */
+    return (
+        <FieldGroupCollapsible header={<Header title={ObsCore} helpID={tapHelpId('obsCore')}
+                                               checkID={TemporalCheck} message={message}/>}
+                               initialState={{ value: 'closed' }}
+                               fieldKey={ObsCorePanel}
+                               wrapperStyle={{marginBottom: 15}}
+                               headerStyle={HeaderFont}>
+
+            <div style={{display:'flex', flexDirection:'column', flexWrap:'no-wrap',
+                width: SpatialWidth, marginTop: 5}}>
+                {showStringField(ObsCoreCollection)}
+                {calibrationSearchList()}
+                {typeSearchList()}
+                {hasSubType && showStringField(ObsCoreSubtype)}
+            </div>
+        </FieldGroupCollapsible>
+    );
+}
+
+ObsCoreSearch.propTypes = {
+    cols: ColsShape,
+    groupKey: PropTypes.string,
+    fields: PropTypes.object
+};
 
 /**
  * render the target panel for cone search
@@ -1302,6 +1424,32 @@ function fieldInit(columnsTable) {
             [PolygonCorners]: {
                 fieldKey: PolygonCorners,
                 value: ''
+            },
+            [ObsCoreCollection]: {
+                fieldKey: ObsCoreCollection,
+                tooltip: 'Select ObsCore Collection name',
+                label: getLabel(ObsCoreCollection, ':'),
+                labelWidth: LableSaptail
+            },
+            [ObsCoreCalibrationSelection]: {
+                fieldKey: ObsCoreCalibrationSelection,
+                tooltip: 'Select ObsCore Calibration Level',
+                label: getLabel(ObsCoreCalibration, ':'),
+                labelWidth: LableSaptail,
+                value: 'ALL'
+            },
+            [ObsCoreTypeSelection]: {
+                fieldKey: ObsCoreTypeSelection,
+                tooltip: 'Select ObsCore Dataproduct Type',
+                label: getLabel(ObsCoreTypeSelection, ':'),
+                labelWidth: LableSaptail,
+                value: 'IMAGE'
+            },
+            [ObsCoreSubtype]: {
+                fieldKey: ObsCoreSubtype,
+                tooltip: 'Select ObsCore Dataproduct Subtype name',
+                label: getLabel(ObsCoreSubtype, ':'),
+                labelWidth: LableSaptail
             },
             [DatePickerOpenStatus]: {
                 fieldKey: DatePickerOpenStatus,
