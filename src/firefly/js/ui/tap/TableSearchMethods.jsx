@@ -88,7 +88,14 @@ const fieldsMap = {[Spatial]: {
                         [ServerParams.USER_TARGET_WORLD_PT]: {label: 'Coordinates or Object Name'},
                         [RadiusSize]: {label: 'Radius'},
                         [PolygonCorners]:  {label: 'Coordinates'}},
-
+                   [ObsCore]: {
+                       [ObsCorePanel]: {label: ObsCore},
+                       [ObsCoreTypeSelection]: {label: 'Dataproduct type'},
+                       [ObsCoreCollection]: {label: 'Collection'},
+                       [ObsCoreCalibrationSelection]: {label: 'Calibration Level'},
+                       [ObsCoreCalibration]: {label: 'Calibration Level'},
+                       [ObsCoreSubtype]: {label: 'Dataproduct subtype'},
+                   },
                    [Temporal]: {
                         [TemporalPanel]: {label:Temporal},
                         [TemporalColumns]: {label: 'Temporal Column'},
