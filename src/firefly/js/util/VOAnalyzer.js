@@ -1295,14 +1295,17 @@ export function isObsCoreLike(tableModel) {
  * @returns {boolean}
  */
 export function matchesObsCoreHeuristic(schemaName, tableName, columnsModel) {
-    if ("ivoa.obscore" === tableName.toLowerCase()){
+    if (tableName?.toLowerCase() === 'ivoa.obscore'){
         return true;
     }
-    if ("ivoa" === schemaName.toLowerCase() && "obscore" === tableName.toLowerCase()) {
+    if (schemaName?.toLowerCase() === 'ivoa' && tableName?.toLowerCase() === 'obscore') {
         return true;
     }
-    var column_names = getColumnValues(columnsModel, 'column_name');
-    return OBSTAP_MATCH_COLUMNS.every((columnName) => {
-        return column_names.indexOf(columnName) >= 0;
-    });
+    if (columnsModel) {
+        var column_names = getColumnValues(columnsModel, 'column_name');
+        return OBSTAP_MATCH_COLUMNS.every((columnName) => {
+            return column_names.indexOf(columnName) >= 0;
+        });
+    }
+    return false;
 }

@@ -6,7 +6,7 @@ import Enum from 'enum';
 import FieldGroupUtils, {getFieldVal} from '../../fieldGroup/FieldGroupUtils.js';
 import {ListBoxInputField} from '../ListBoxInputField.jsx';
 import {FieldGroup} from '../FieldGroup.jsx';
-import {findCenterColumnsByColumnsModel, posCol, UCDCoord} from '../../util/VOAnalyzer.js';
+import {findCenterColumnsByColumnsModel, matchesObsCoreHeuristic, posCol, UCDCoord} from '../../util/VOAnalyzer.js';
 import FieldGroupCntlr from '../../fieldGroup/FieldGroupCntlr.js';
 import {TargetPanel} from '../../ui/TargetPanel.jsx';
 import {SizeInputFields} from '../SizeInputField.jsx';
@@ -39,6 +39,7 @@ const SpatialCheck = 'spatialCheck';
 const CenterColumns = 'centerColumns';
 const CenterLonColumns = 'centerLonColumns';
 const CenterLatColumns = 'centerLatColumns';
+const SRegionColumn = 'sRegionColumn';
 const SpatialMethod = 'spatialMethod';
 const RadiusSize = 'coneSize';
 const PolygonCorners = 'polygoncoords';
@@ -67,16 +68,21 @@ const TimeTo = 'timeTo';
 const TimeOptions = 'timeOptions';
 const ObsCore = 'ObsCore';
 const ObsCorePanel = 'obsCorePanel';
-const ObsCoreCollection = 'Collection';
-const ObsCoreTypeSelection = 'obsCoreTypeSelection';
-const ObsCoreSubtype = 'Subtype';
-const ObsCoreCalibration = 'Calibration';
-const ObsCoreCalibrationSelection = 'obsCoreCalibrationSelection';
+// const ObsCoreCollection = 'Collection';
+// const ObsCoreTypeSelection = 'obsCoreTypeSelection';
+// const ObsCoreSubtype = 'Subtype';
+// const ObsCoreCalibration = 'Calibration';
+// const ObsCoreCalibrationSelection = 'obsCoreCalibrationSelection';
 const SpatialTypeOptions = 'spatialTypeOptions';
 const Wavelength = 'Wavelength';
 const WavelengthPanel = 'wavelengthSearchPanel';
 const WavelengthCheck = 'wavelengthCheck';
-const WavelengthColumns = 'wavelengthColumns';
+const WavelengthUnits = 'wavelengthUnits';
+const WavelengthMinStart = 'wavelengthMinStart';
+const WavelengthMinEnd = 'wavelengthMinEnd';
+const WavelengthMaxStart = 'wavelengthMaxStart';
+const WavelengthMaxEnd = 'wavelengthMaxEnd';
+
 
 const CrtColumnsModel = 'crtColumnsModel';
 
@@ -86,38 +92,44 @@ const PanelMessage = 'panelMessage';
 
 const LeftInSearch = 8;
 const LabelWidth = 106;
-const LableSaptail = 100;
+const LableSaptail = 110;
 const SpatialWidth = 400;
 
 const fieldsMap = {[Spatial]: {
                         [SpatialPanel]: {label: Spatial},
                         [CenterColumns]: {label: 'Position Columns'},
                         [CenterLonColumns]: {label: 'Longitude Column'},
+                        [SRegionColumn]: {label: 'Region Column'},
                         [CenterLatColumns]: {label: 'Latitude Column'},
                         [SpatialMethod]: {label: 'Search Method'},
                         [ServerParams.USER_TARGET_WORLD_PT]: {label: 'Coordinates or Object Name'},
                         [RadiusSize]: {label: 'Radius'},
                         [PolygonCorners]:  {label: 'Coordinates'}},
-                   [ObsCore]: {
+                   /*[ObsCore]: {
                        [ObsCorePanel]: {label: ObsCore},
                        [ObsCoreTypeSelection]: {label: 'Dataproduct type'},
                        [ObsCoreCollection]: {label: 'Collection'},
                        [ObsCoreCalibrationSelection]: {label: 'Calibration Level'},
                        [ObsCoreCalibration]: {label: 'Calibration Level'},
                        [ObsCoreSubtype]: {label: 'Dataproduct subtype'},
-                   },
+                   },*/
                    [Temporal]: {
                         [TemporalPanel]: {label:Temporal},
                         [TemporalColumns]: {label: 'Temporal Column'},
+                        [ExposureColumns]: {label: 'Exposure Duration Column'},
                         [TimeFrom]: {label: 'From'},
                         [TimeTo]: {label: 'To'},
+                        [ExposureDuration]: {label: 'Exposure Duration'},
                         [MJDFrom]: {label: 'MJD (From)'},
                         [MJDTo]: {label: 'MJD (To)'},
                         [TimePickerFrom]: {label: 'ISO (From)'},
                         [TimePickerTo]: {label: 'ISO (To)'}},
-                   [Wavelength]: {
-                        [WavelengthPanel]: {label: Wavelength},
-                        [WavelengthColumns]: {label: 'Wavelength Column'}}};
+                    // [Wavelength]: {
+                    //     [WavelengthUnits]: {label: 'Wavelength units'},
+                    //     [WavelengthMinStart]: {label: 'Wavelength Min'},
+                    //     [WavelengthMaxStart]: {label: 'Wavelength Max'},
+                    // },
+};
 
 const fakeValidator = (val) => {
     return {
@@ -133,6 +145,7 @@ const TapSpatialSearchMethod = new Enum({
 
 import '../CatalogSearchMethodType.css';
 import './react-datetime.css';
+import {InputAreaFieldConnected} from "firefly/ui/InputAreaField";
 
 const  FROM = 0;
 const  TO  = 1;
@@ -167,7 +180,7 @@ const  timeKeyMap = {
 // size used
 const Width_Column = 175;
 const Width_Time_Wrapper = Width_Column + 30;
-export const SpattialPanelWidth = Math.max(Width_Time_Wrapper*2, SpatialWidth) + LabelWidth + 10;
+export const SpattialPanelWidth = Math.max(Width_Time_Wrapper*2, SpatialWidth) + LabelWidth + 10; /* FIXME: Spattial spelling */
 
 
 function Header({title, helpID='', checkID, message, enabled=false}) {
@@ -217,53 +230,72 @@ function getLabel(key, trailing='') {
     return l ? l+trailing  : l;
 }
 
-class ClassBasedTableSearchMethods extends PureComponent {
-    constructor(props) {
-        super(props);
-        this.state = Object.assign(this.nextState(props));
-    }
+// class ClassBasedTableSearchMethods extends PureComponent {
+//     constructor(props) {
+//         super(props);
+//         this.state = Object.assign(this.nextState(props));
+//     }
+//
+//     componentWillUnmount() {
+//         if (this.removeListener) this.removeListener();
+//         this.iAmMounted = false;
+//     }
+//
+//     componentDidMount() {
+//         this.iAmMounted = true;
+//         this.removeListener = flux.addListener(() => this.storeUpdate());
+//     }
+//
+//     storeUpdate() {
+//         if (this.iAmMounted) {
+//             this.setState(this.nextState());
+//         }
+//     }
+//
+//     nextState(props) {
+//         const fields = FieldGroupUtils.getGroupFields(skey);
+//         const columnsModel =  props ? props.columnsModel : getTblById(get(fields, [CrtColumnsModel, 'value']));
+//
+//         return {fields, columnsModel};
+//     }
+//
+//     render() {
+//         const groupKey = skey;
+//         const {fields, columnsModel} = this.state;
+//         const obsCoreEnabled = this.props.obsCoreEnabled;
+//
+//         const cols = getAvailableColumns(columnsModel);
+//         return (
+//             <FieldGroup style={{height: '100%', overflow: 'auto'}}
+//                         groupKey={skey} keepState={true} reducerFunc={tapSearchMethodReducer(columnsModel)}>
+//                 <SpatialSearch {...{cols, groupKey, fields, initArgs:this.props.initArgs, obsCoreEnabled}} />
+//                 <TemporalSearch {...{cols, groupKey, fields, obsCoreEnabled}} />
+//                 {obsCoreEnabled && <ExposureDurationSearch {...{cols, groupKey, fields}} /> }
+//                 {obsCoreEnabled && <ObsCoreCollectionSearch {...{cols, groupKey, fields}} /> }
+//                 {obsCoreEnabled && <CalibrationSearch {...{cols, groupKey, fields}} /> }
+//                 {obsCoreEnabled && <EnergySearch {...{cols, groupKey, fields}} /> }
+//                 {obsCoreEnabled && <ObsCoreSubtypeSearch {...{cols, groupKey, fields}} /> }
+//                 {false && <WavelengthSearch {...{cols, groupKey, fields, initArgs:this.props.initArgs}} />}
+//             </FieldGroup>
+//         );
+//     }
+// }
 
-    componentWillUnmount() {
-        if (this.removeListener) this.removeListener();
-        this.iAmMounted = false;
-    }
+const constraintReducers = {};
+const queryState = {
 
-    componentDidMount() {
-        this.iAmMounted = true;
-        this.removeListener = flux.addListener(() => this.storeUpdate());
-    }
-
-    storeUpdate() {
-        if (this.iAmMounted) {
-            this.setState(this.nextState());
-        }
-    }
-
-    nextState(props) {
-        const fields = FieldGroupUtils.getGroupFields(skey);
-        const columnsModel =  props ? props.columnsModel : getTblById(get(fields, [CrtColumnsModel, 'value']));
-
-        return {fields, columnsModel};
-    }
-
-    render() {
-        const groupKey = skey;
-        const {fields, columnsModel} = this.state;
-
-        const cols = getAvailableColumns(columnsModel);
-        return (
-            <FieldGroup style={{height: '100%', overflow: 'auto'}}
-                        groupKey={skey} keepState={true} reducerFunc={tapSearchMethodReducer(columnsModel)}>
-                <SpatialSearch {...{cols, groupKey, fields, initArgs:this.props.initArgs}} />
-                <TemporalSearch {...{cols, groupKey, fields}} />
-                {false && <WavelengthSearch {...{cols, groupKey, fields, initArgs:this.props.initArgs}} />}
-            </FieldGroup>
-        );
-    }
-}
-
+};
 const FunctionalTableSearchMethods = (props) => {
+    // const combinedConstraintReducer = (state, action) => {
+    //     const adqlQueryFragments = [];
+    //     const siaQueryFragments = [];
+    //     const siaQueryErorrs = [];
+    //     constraintReducers.adqlReducerList.forEach((reducer) => {
+    //         const {adqlConstraint, siaConstraint, siaQueryError} = reducer();
+    //     });
+    // };
     const [fields, setFields] = useState(FieldGroupUtils.getGroupFields(skey));
+    //const [queryState, dispatchQueryState] = useReducer();
     // FIXME: Rationalize use of state, props, etc...
     //const [columnsModel, setColumnsModel] = useState(props ? props.columnsModel : getTblById(get(fields, [CrtColumnsModel, 'value'])));
     const columnsModel = props.columnsModel;
@@ -274,19 +306,39 @@ const FunctionalTableSearchMethods = (props) => {
         //return flux.addListener(() => {
         //    // FIXME: Do we need to add a removal listener?
         //})
+        // only at bind-time
+        // return FieldGroupUtils.bindToStore(groupKey, (fields) => {
+        //     const constraints = [];
+        //     constraintReducers.adqlReducerList.forEach((adqlReducer) => {
+        //         const {adqlConstraint, adqlConstraintError} = adqlReducer(fields);
+        //         constraints.push({adqlConstraint, adqlConstraintError});
+        //     });
+        //     console.log(constraints);
+        // });
     }, []);
 
     const obsCoreEnabled = props.obsCoreEnabled;
     const cols = getAvailableColumns(columnsModel);
+
+    const validationReducers = {};
+    validationReducers.fieldMap = {};
+
+    // We reset the item every time
+    constraintReducers.adqlReducerList = [];
+    constraintReducers.siaReducerList = [];
+
+    // We create a new reducer for this FieldGroup
     return (
         <FieldGroup style={{height: '100%', overflow: 'auto'}}
-                    groupKey={groupKey} keepState={true} reducerFunc={tapSearchMethodReducer(columnsModel)}>
+                    groupKey={groupKey} keepState={true} reducerFunc={buildTapSearchMethodReducer(columnsModel)}>
+            {obsCoreEnabled && <ObsCoreSearch {...{cols, groupKey, fields, validationReducers, constraintReducers}} />}
             <SpatialSearch {...{cols, groupKey, fields, initArgs:props.initArgs, obsCoreEnabled}} />
+            {obsCoreEnabled && <ExposureDurationSearch {...{cols, groupKey, fields, componentReducers: validationReducers, constraintReducers: constraintReducers}} />}
             <TemporalSearch {...{cols, groupKey, fields, obsCoreEnabled}} />
-            {false && <WavelengthSearch {...{cols, groupKey, fields, initArgs:props.initArgs}} />}
+            {obsCoreEnabled && <ObsCoreWavelengthSearch {...{cols, groupKey, fields, componentReducers: validationReducers, constraintReducers: constraintReducers}} />}
         </FieldGroup>
     );
-}
+};
 
 export const TableSearchMethods = FunctionalTableSearchMethods;
 
@@ -317,11 +369,67 @@ function changeDatePickerOpenStatus(loc, timeKey) {
     };
 }
 
-function SpatialSearch({cols, groupKey, fields, initArgs={}}) {
+function SpatialSearch({cols, groupKey, fields, initArgs={}, obsCoreEnabled}) {
     const {POSITION:worldPt, radiusInArcSec}= initArgs;
+    const [spatialType, setSpatialType] = useState('standard');
+    const [spatialMethod, setSpatialMethod] = useState(TapSpatialSearchMethod.Cone.value);
+    const [spatialRegionOperation, setSpatialRegionOperation] = useState('contains');
+    const [spatialRegionOperand, setSpatialRegionOperand] = useState('point');
+
+    useEffect(() => {
+        return FieldGroupUtils.bindToStore(groupKey, (fields) => {
+            setSpatialType(getFieldVal(groupKey, SpatialTypeOptions, spatialType));
+            setSpatialMethod(getFieldVal(groupKey, SpatialMethod, spatialMethod));
+            setSpatialRegionOperation(getFieldVal(groupKey, 'spatialRegionOperation', spatialRegionOperation));
+            setSpatialRegionOperand(getFieldVal(groupKey, 'spatialRegionOperand', spatialRegionOperand));
+        });
+    }, []);
+
+    const operandOptions = [{label: 'Shape', value: 'shape'}];
+    if (spatialRegionOperation === 'contains'){
+        operandOptions.push({label: 'Point', value: 'point'});
+    }
+
+    const doRegionSearch = () => {
+
+        return (
+            <div style={{marginTop: '5px'}}>
+                <ListBoxInputField
+                    fieldKey={'spatialRegionOperation'}
+                    options={
+                        [
+                            {label: 'contains', value: 'contains'},
+                            {label: 'is contained by', value: 'contained'},
+                            {label: 'intersects', value: 'intersects'},
+                        ]}
+                    initialState={{
+                        value: 'contains'
+                    }}
+                    multiple={false}
+                    label={'Region (s_region):'}
+                    labelWidth={LableSaptail}
+                />
+                <RadioGroupInputField
+                    fieldKey={'spatialRegionOperand'}
+                    options={operandOptions}
+                    alignment={'horizontal'}
+                    wrapperStyle={{marginTop: '5px'}}
+                />
+                <div style={{marginTop: '5px'}}>
+                    {spatialRegionOperand === 'shape' && doSpatialSearch()}
+                    {spatialRegionOperand === 'point' &&
+                        <div style={{height: 70, display:'flex', justifyContent: 'flex-start', alignItems: 'center', margienTop: '5px'}}>
+                            <TargetPanel fieldKey={'containedPoint'} labelWidth={LableSaptail} groupKey={groupKey} feedbackStyle={{height: 40}}/>
+                        </div>
+                    }
+                    </div>
+            </div>
+        );
+    };
+
     const showCenterColumns = () => {
         return (
-            <div style={{marginLeft: LeftInSearch}}>
+            <div style={{marginLeft: LeftInSearch, marginTop: '5px'}}>
                 <ColumnFld fieldKey={CenterLonColumns}
                            groupKey={groupKey}
                            cols={cols}
@@ -343,14 +451,15 @@ function SpatialSearch({cols, groupKey, fields, initArgs={}}) {
     const doSpatialSearch = () => {
         return (
             <div style={{display:'flex', flexDirection:'column', flexWrap:'no-wrap',
-                         width: SpatialWidth, marginLeft: `${LabelWidth + LeftInSearch}px`, marginTop: 5}}>
-                {selectSpatialSearchMethod(groupKey, fields)}
-                {setSpatialSearchSize(fields, radiusInArcSec)}
+                         width: SpatialWidth, marginLeft: `${LeftInSearch}px`, marginTop: 5}}>
+                {selectSpatialSearchMethod(groupKey, fields, spatialMethod)}
+                {setSpatialSearchSize(fields, radiusInArcSec, spatialMethod)}
             </div>
         );
     };
 
     const message = get(fields, [SpatialCheck, 'value']) === Spatial ? get(fields, [SpatialPanel, PanelMessage], '') : '';
+    const spatialCoordinatesOrRegion = [{label: 'Standard', value: 'standard'}, {label: 'Region', value: 'region'}];
 
     return (
         <FieldGroupCollapsible header={<Header title={Spatial}  helpID={tapHelpId('spatial')}
@@ -359,9 +468,17 @@ function SpatialSearch({cols, groupKey, fields, initArgs={}}) {
                                fieldKey={SpatialPanel}
                                wrapperStyle={{marginBottom: 15}}
                                headerStyle={HeaderFont}>
-            <div style={{marginTop: 5}}>
-                {showCenterColumns()}
-                {doSpatialSearch()}
+            <div style={{marginTop: '5px'}}>
+                <RadioGroupInputField
+                    fieldKey={SpatialTypeOptions}
+                    options={spatialCoordinatesOrRegion}
+                    alignment={'horizontal'}
+                    wrapperStyle={{width: LabelWidth, paddingRight:'4px'}}
+                />
+                {spatialType === 'standard' && showCenterColumns()}
+                {spatialType === 'standard' && doSpatialSearch()}
+                {spatialType === 'region' && doRegionSearch()}
+
             </div>
         </FieldGroupCollapsible>
     );
@@ -371,7 +488,8 @@ SpatialSearch.propTypes = {
     cols: ColsShape,
     groupKey: PropTypes.string,
     fields: PropTypes.object,
-    initArgs: PropTypes.object
+    initArgs: PropTypes.object,
+    obsCoreEnabled: PropTypes.bool,
 };
 
 
@@ -456,12 +574,13 @@ function TemporalSearch({cols, groupKey, fields}) {
 TemporalSearch.propTypes = {
     cols: ColsShape,
     groupKey: PropTypes.string,
-    fields: PropTypes.object
+    fields: PropTypes.object,
+    obsCoreEnabled: PropTypes.bool
 };
 
 
-function ExposureDurationSearch({cols, groupKey, fields}) {
-    const [rangeType, setRangeType]= useState('range');
+function ExposureDurationSearch({cols, groupKey, fields, componentReducers}) {
+    const [rangeType, setRangeType] = useState('range');
 
     useEffect(() => {
         return FieldGroupUtils.bindToStore(groupKey, (fields) => {
@@ -486,87 +605,102 @@ function ExposureDurationSearch({cols, groupKey, fields}) {
                     alignment={'horizontal'}
                 />
                 <div>
-                {rangeType === 'range' &&
-                <div style={{display: 'block', marginLeft: LeftInSearch, marginTop: 5}}>
-                    <RadioGroupInputField
-                        fieldKey={TimeOptions}
-                        options={timeOptions}
-                        alignment={'horizontal'}
-                        wrapperStyle={{width: LabelWidth, paddingRight: '4px'}}
-                    />
-                    <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5}}>
-                        <div title='Start Time' style={{display: 'inline-block', paddingRight: '4px', width: '106px'}}>Start Time</div>
-                        <div style={{width: Width_Time_Wrapper}}>
-                            <TimePanel
-                                fieldKey={ExposureStartFrom}
-                                groupKey={skey}
-                                timeMode={crtTimeMode}
-                                icon={icon}
-                                onClickIcon={changeDatePickerOpenStatus(FROM, ExposureStartFrom)}
-                                feedbackStyle={{height: 100}}
-                                inputWidth={Width_Column}
-                                inputStyle={{overflow: 'auto', height: 16}}
-                            />
+                    {rangeType === 'range' &&
+                    <div style={{display: 'block', marginLeft: LeftInSearch, marginTop: 5}}>
+                        <RadioGroupInputField
+                            fieldKey={TimeOptions}
+                            options={timeOptions}
+                            alignment={'horizontal'}
+                            wrapperStyle={{width: LabelWidth, paddingRight: '4px'}}
+                        />
+                        <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5}}>
+                            <div title='Start Time'
+                                 style={{display: 'inline-block', paddingRight: '4px', width: '106px'}}>Start Time
+                            </div>
+                            <div style={{width: Width_Time_Wrapper}}>
+                                <TimePanel
+                                    fieldKey={ExposureStartFrom}
+                                    groupKey={skey}
+                                    timeMode={crtTimeMode}
+                                    icon={icon}
+                                    onClickIcon={changeDatePickerOpenStatus(FROM, ExposureStartFrom)}
+                                    feedbackStyle={{height: 100}}
+                                    inputWidth={Width_Column}
+                                    inputStyle={{overflow: 'auto', height: 16}}
+                                    validator={timeValidator}
+                                    tooltip={"'Exposure start from' time in iso mode"}
+                                />
+                            </div>
+                            <div style={{width: Width_Time_Wrapper}}>
+                                <TimePanel
+                                    fieldKey={ExposureStartTo}
+                                    groupKey={skey}
+                                    timeMode={crtTimeMode}
+                                    icon={icon}
+                                    onClickIcon={changeDatePickerOpenStatus(TO, ExposureStartTo)}
+                                    feedbackStyle={{height: 100}}
+                                    inputWidth={Width_Column}
+                                    inputStyle={{overflow: 'auto', height: 16}}
+                                    validator={timeValidator}
+                                    tooltip={"'Exposure start to' time in iso mode"}
+                                />
+                            </div>
                         </div>
-                        <div style={{width: Width_Time_Wrapper}}>
-                            <TimePanel
-                                fieldKey={ExposureStartTo}
-                                groupKey={skey}
-                                timeMode={crtTimeMode}
-                                icon={icon}
-                                onClickIcon={changeDatePickerOpenStatus(TO, ExposureStartTo)}
-                                feedbackStyle={{height: 100}}
-                                inputWidth={Width_Column}
-                                inputStyle={{overflow: 'auto', height: 16}}
-                            />
+                        <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5}}>
+                            <div title='End Time'
+                                 style={{display: 'inline-block', paddingRight: '4px', width: '106px'}}>End Time
+                            </div>
+                            <div style={{width: Width_Time_Wrapper}}>
+                                <TimePanel
+                                    fieldKey={ExposureEndFrom}
+                                    groupKey={skey}
+                                    timeMode={crtTimeMode}
+                                    icon={icon}
+                                    onClickIcon={changeDatePickerOpenStatus(FROM, ExposureEndFrom)}
+                                    feedbackStyle={{height: 100}}
+                                    inputWidth={Width_Column}
+                                    inputStyle={{overflow: 'auto', height: 16}}
+                                    validator={timeValidator}
+                                    tooltip={"'Exposure end from' time in iso mode"}
+                                />
+                            </div>
+                            <div style={{width: Width_Time_Wrapper}}>
+                                <TimePanel
+                                    fieldKey={ExposureEndTo}
+                                    groupKey={skey}
+                                    timeMode={crtTimeMode}
+                                    icon={icon}
+                                    onClickIcon={changeDatePickerOpenStatus(TO, ExposureEndTo)}
+                                    feedbackStyle={{height: 100}}
+                                    inputWidth={Width_Column}
+                                    inputStyle={{overflow: 'auto', height: 16}}
+                                    validator={timeValidator}
+                                    tooltip={"'Exposure end to' time in iso mode"}
+                                />
+                            </div>
                         </div>
                     </div>
+                    }
+                    {rangeType === 'since' &&
                     <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5}}>
-                        <div title='End Time' style={{display: 'inline-block', paddingRight: '4px', width: '106px'}}>End Time</div>
-                        <div style={{width: Width_Time_Wrapper}}>
-                            <TimePanel
-                                fieldKey={ExposureEndFrom}
-                                groupKey={skey}
-                                timeMode={crtTimeMode}
-                                icon={icon}
-                                onClickIcon={changeDatePickerOpenStatus(FROM, ExposureEndFrom)}
-                                feedbackStyle={{height: 100}}
-                                inputWidth={Width_Column}
-                                inputStyle={{overflow: 'auto', height: 16}}
-                            />
-                        </div>
-                        <div style={{width: Width_Time_Wrapper}}>
-                            <TimePanel
-                                fieldKey={ExposureEndTo}
-                                groupKey={skey}
-                                timeMode={crtTimeMode}
-                                icon={icon}
-                                onClickIcon={changeDatePickerOpenStatus(TO, ExposureEndTo)}
-                                feedbackStyle={{height: 100}}
-                                inputWidth={Width_Column}
-                                inputStyle={{overflow: 'auto', height: 16}}
-                            />
-                        </div>
+                        <ValidationField
+                            fieldKey={'SinceValue'} // FIXME: Introduce SinceValue or similar
+                            groupKey={skey}
+                            // feedbackStyle={{height: 100}}
+                            inputWidth={Width_Column}
+                            inputStyle={{overflow: 'auto', height: 16}}
+                            validator={fakeValidator}
+                        />
+                        <RadioGroupInputField
+                            fieldKey={'SinceOptions'} // FIXME: Introduce SinceOptions
+                            options={[{label: 'Hours', value: 'hours'}, {label: 'Days', value: 'days'}, {
+                                label: 'Years',
+                                value: 'years'
+                            }]}
+                            alignment={'horizontal'}
+                        />
                     </div>
-                </div>
-                }
-                {rangeType === 'since' &&
-                <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5}}>
-                    <ValidationField
-                        fieldKey={'SinceValue'} // FIXME: Introduce SinceValue or similar
-                        groupKey={skey}
-                        // feedbackStyle={{height: 100}}
-                        inputWidth={Width_Column}
-                        inputStyle={{overflow:'auto', height:16}}
-                        validator={fakeValidator}
-                    />
-                    <RadioGroupInputField
-                        fieldKey={'SinceOptions'} // FIXME: Introduce SinceOptions
-                        options={ [{label: 'Hours', value: 'hours'}, {label: 'Days', value: 'days'}, {label: 'Years', value: 'years'}]}
-                        alignment={'horizontal'}
-                    />
-                </div>
-                }
+                    }
                 </div>
             </div>
         );
@@ -580,7 +714,7 @@ function ExposureDurationSearch({cols, groupKey, fields}) {
                             checkID={TemporalCheck}
                 //message={message}
             />}
-            initialState={{ value: 'closed' }}
+            initialState={{value: 'closed'}}
             fieldKey={ExposureDurationPanel}
             wrapperStyle={{marginBottom: 15}}
             headerStyle={HeaderFont}>
@@ -598,43 +732,114 @@ ExposureDurationSearch.propTypes = {
 };
 
 
-function WavelengthSearch({cols, groupKey, fields, initArgs={}}) {
-    const showWavelengthColumns = () => {
-        return (
-            <div style={{marginLeft: LeftInSearch}}>
-                <ColumnFld fieldKey={WavelengthColumns}
-                           groupKey={groupKey}
-                           cols={cols}
-                           name={getLabel(WavelengthColumns).toLowerCase()} // label that appears in column chooser
-                           label={getLabel(WavelengthColumns, ':')}
-                           labelWidth={LabelWidth}
-                           tooltip={'Column for wavelength search'}
-                           inputStyle={{overflow:'auto', height:12, width: Width_Column}}
-                />
-            </div>
-        );
-    };
+// function WavelengthSearch({cols, groupKey, fields, initArgs={}}) {
+//     const showWavelengthColumns = () => {
+//         return (
+//             <div style={{marginLeft: LeftInSearch}}>
+//                 <ColumnFld fieldKey={WavelengthColumns}
+//                            groupKey={groupKey}
+//                            cols={cols}
+//                            name={getLabel(WavelengthColumns).toLowerCase()} // label that appears in column chooser
+//                            label={getLabel(WavelengthColumns, ':')}
+//                            labelWidth={LabelWidth}
+//                            tooltip={'Column for wavelength search'}
+//                            inputStyle={{overflow:'auto', height:12, width: Width_Column}}
+//                 />
+//             </div>
+//         );
+//     };
+//     return (
+//         <FieldGroupCollapsible header={<Header title={Wavelength} helpID={tapHelpId('wavelength')}
+//                                                checkID={WavelengthCheck}/>}
+//                                initialState={{ value: 'closed' }}
+//                                fieldKey={WavelengthPanel}
+//                                headerStyle={HeaderFont}>
+//             <div style={{width: 100, height: 50}}>
+//                 {showWavelengthColumns()}
+//             </div>
+//         </FieldGroupCollapsible>
+//     );
+// }
+
+function ObsCoreWavelengthSearch({cols, groupKey, fields, componentReducers}) {
     return (
         <FieldGroupCollapsible header={<Header title={Wavelength} helpID={tapHelpId('wavelength')}
                                                checkID={WavelengthCheck}/>}
                                initialState={{ value: 'closed' }}
                                fieldKey={WavelengthPanel}
                                headerStyle={HeaderFont}>
-            <div style={{width: 100, height: 50}}>
-                {showWavelengthColumns()}
+            <div style={{display: 'flex', flexDirection: 'column', width: SpatialWidth, justifyContent: 'flex-start'}} >
+                <ListBoxInputField
+                    fieldKey={WavelengthUnits}
+                    options={
+                        [
+                            {label: 'microns', value: 'um'},
+                            {label: 'nanometers', value: 'nm'},
+                            {label: 'angstroms', value: 'angstrom'},
+                        ]}
+                    initialState={{
+                        value: 'nm'
+                    }}
+                    label={'Units:'}
+                    multiple={false}
+                    labelWidth={LableSaptail}
+                />
+                <div style={{display: 'flex', marginTop: '5px'}}>
+                    <ValidationField
+                        fieldKey={WavelengthMinStart}
+                        groupKey={skey}
+                        inputWidth={Width_Column}
+                        inputStyle={{overflow:'auto', height:16}}
+                        label={'Wavelength Min'}
+                        labelWidth={LableSaptail}
+                        validator={fakeValidator}
+                    />
+                    <ValidationField
+                        fieldKey={WavelengthMinEnd}
+                        groupKey={skey}
+                        inputWidth={Width_Column}
+                        inputStyle={{overflow:'auto', height:16}}
+                        validator={fakeValidator}
+                    />
+                </div>
+                <div style={{display: 'flex', marginTop: '5px'}}>
+                    <ValidationField
+                        fieldKey={WavelengthMaxStart}
+                        groupKey={skey}
+                        inputWidth={Width_Column}
+                        inputStyle={{overflow:'auto', height:16}}
+                        label={'Wavelength Max'}
+                        labelWidth={LableSaptail}
+                        validator={fakeValidator}
+                    />
+                    <ValidationField
+                        fieldKey={WavelengthMaxEnd}
+                        groupKey={skey}
+                        inputWidth={Width_Column}
+                        inputStyle={{overflow:'auto', height:16}}
+                        validator={fakeValidator}
+                    />
+                </div>
+
             </div>
         </FieldGroupCollapsible>
     );
 }
 
-WavelengthSearch.propTypes = {
+ObsCoreWavelengthSearch.propTypes = {
     cols: ColsShape,
     groupKey: PropTypes.string,
     fields: PropTypes.object
 };
 
+// WavelengthSearch.propTypes = {
+//     cols: ColsShape,
+//     groupKey: PropTypes.string,
+//     fields: PropTypes.object
+// };
 
-function selectSpatialSearchMethod(groupKey, fields) {
+
+function selectSpatialSearchMethod(groupKey, fields, spatialMethod) {
     const spatialOptions = () => {
         return TapSpatialSearchMethod.enums.reduce((p, enumItem)=> {
             p.push({label: enumItem.key, value: enumItem.value});
@@ -650,22 +855,33 @@ function selectSpatialSearchMethod(groupKey, fields) {
                 wrapperStyle={{marginRight:'15px', padding:'8px 0 5px 0'}}
                 multiple={false}
             />
-            {renderTargetPanel(groupKey, fields)}
+            {renderTargetPanel(groupKey, fields, spatialMethod)}
         </div>
     );
     return spatialSearchList;
 }
 
-const ObsCoreCalibrationLevels = new Enum({
-    '(ALL)': 'ALL',
-    '0': '0',
-    '1': '1',
-    '2': '2',
-    '3': '3',
-    '4': '4',
-});
+function ObsCoreSearch({cols, groupKey, fields, validationReducers, constraintReducers}) {
 
-function calibrationSearchList() {
+    const ObsCoreCalibrationLevels = new Enum({
+        '(ALL)': 'ALL',
+        '0': '0',
+        '1': '1',
+        '2': '2',
+        '3': '3',
+        '4': '4',
+    });
+
+    const ObsCoreTypeOptions = new Enum({
+        'IMAGE': 'IMAGE',
+        'CUBE': 'CUBE',
+        'SPECTRUM': 'SPECTRUM',
+        'SED': 'SED',
+        'TIMESERIES': 'TIMESERIES',
+        'EVENT': 'EVENT',
+        'MEASUREMENTS': 'MEASUREMENTS',
+    });
+
     const calibrationOptions = () => {
         return ObsCoreCalibrationLevels.enums.reduce((p, enumItem)=> {
             p.push({label: enumItem.key, value: enumItem.value});
@@ -673,29 +889,6 @@ function calibrationSearchList() {
         }, []);
     };
 
-    const calibrationList = (
-        <div style={{display:'flex', flexDirection:'column', marginTop: '5px'}}>
-            <ListBoxInputField
-                fieldKey={ObsCoreCalibrationSelection}
-                options={calibrationOptions()}
-                multiple={false}
-            />
-        </div>
-    );
-    return calibrationList;
-}
-
-const ObsCoreTypeOptions = new Enum({
-    'IMAGE': 'IMAGE',
-    'CUBE': 'CUBE',
-    'SPECTRUM': 'SPECTRUM',
-    'SED': 'SED',
-    'TIMESERIES': 'TIMESERIES',
-    'EVENT': 'EVENT',
-    'MEASUREMENTS': 'MEASUREMENTS',
-});
-
-function typeSearchList() {
     const typeOptions = () => {
         return ObsCoreTypeOptions.enums.reduce((p, enumItem)=> {
             p.push({label: enumItem.key, value: enumItem.value});
@@ -703,54 +896,139 @@ function typeSearchList() {
         }, []);
     };
 
-    const typeList = (
-        <div style={{display:'flex', flexDirection:'column'}}>
-            <ListBoxInputField
-                fieldKey={ObsCoreTypeSelection}
-                options={typeOptions()}
-                wrapperStyle={{marginRight:'15px', padding:'8px 0 5px 0'}}
-                multiple={false}
-            />
-        </div>
-    );
-    return typeList;
-}
+    const hasSubType = true; // getColumn(cols, "dataproduct_subtype") || false;
+    const message = get(fields, ['ObsCoreCheck', 'value']) === ObsCore ?get(fields, [ObsCorePanel, PanelMessage], '') :''; /* FIXME: ObsCoreCheck */
 
-
-function ObsCoreSearch({cols, groupKey, fields}) {
-
-    const showStringField = (fieldKey) => {
-        return (
-            <div style={{marginTop: '5px'}}>
-                <ValidationField
-                    fieldKey={fieldKey}
-                    groupKey={skey}
-                    inputWidth={Width_Column}
-                    inputStyle={{overflow:'auto', height:16}}
-                    label={getLabel(fieldKey)}
-                    labelStyle={{width: '100px'}}
-                    validator={fakeValidator}
-                />
-            </div>
-        );
+    const constraintReducer = (fields) => {
+        const {ObsCoreCheck} = fields;
+        const adqlConstraints = [];
+        const siaConstraints = [];
+        const siaConstraintErrors = [];
+        if (fields && ObsCoreCheck?.value === 'ObsCore') {
+            // pull out the fields we care about
+            const {obsCoreCollection, obsCoreCalibrationSelection, obsCoreTypeSelection, obsCoreSubType} = fields;
+            if (obsCoreCollection.value?.length > 0){
+                const adqlConstraint = [];
+                adqlConstraint.push('obs_collection');
+                adqlConstraint.push('=');
+                adqlConstraint.push('\'' + obsCoreCollection.value + '\'');
+                adqlConstraints.push(adqlConstraint.join(' '));
+                siaConstraints.push('COLLECTION=' + obsCoreCollection.value);
+            }
+            if (obsCoreCalibrationSelection.value !== 'ALL'){
+                // We only do a section if ALL is not selected.
+                const adqlConstraint = [];
+                adqlConstraint.push('calib_level');
+                adqlConstraint.push('=');
+                adqlConstraint.push('\'' + obsCoreCalibrationSelection.value + '\'');
+                adqlConstraints.push(adqlConstraint.join(' '));
+                siaConstraints.push('CALIB=' + obsCoreCalibrationSelection.value);
+            }
+            if (obsCoreTypeSelection.value !== ''){
+                const adqlConstraint = [];
+                adqlConstraint.push('dataproduct_type');
+                adqlConstraint.push('=');
+                adqlConstraint.push('\'' + obsCoreTypeSelection.value + '\'');
+                adqlConstraints.push(adqlConstraint.join(' '));
+                siaConstraints.push('DPTYPE=' + obsCoreTypeSelection.value);
+            }
+            if (obsCoreSubType.value?.length > 0){
+                const adqlConstraint = [];
+                adqlConstraint.push('dataproduct_subtype');
+                adqlConstraint.push('=');
+                adqlConstraint.push('\'' + obsCoreSubType.value + '\'');
+                adqlConstraints.push(adqlConstraint.join(' '));
+                siaConstraintErrors.push('Warning: Not able to translate dataproduct_subtype to SIAV2 query');
+            }
+        }
+        return {adqlConstraint: adqlConstraints.join(' AND '), adqlConstraintError: undefined, siaConstraint: siaConstraints.join('?'), siaConstraintError: siaConstraintErrors.join('\n')};
     };
 
-    const hasSubType = true; // getColumn(cols, "dataproduct_subtype") || false;
-    const message = get(fields, [TemporalCheck, 'value']) === ObsCore ?get(fields, [ObsCorePanel, PanelMessage], '') :''; /* FIXME: exposure check */
+    const adqlReducer = (fields) => {
+        const {adqlConstraint, adqlConstraintError} = constraintReducer(fields);
+        return {adqlConstraint: adqlConstraint, adqlConstraintError: adqlConstraintError};
+    };
+
+    const siaReducer = (fields) => {
+        const {siaConstraint, siaConstraintError} = constraintReducer(fields);
+        return {siaConstraint: siaConstraint, siaConstraintError: siaConstraintError};
+    };
+
+    const validationReducer = (fieldKey, fields, action) => {
+        switch (action.type) {
+            case FieldGroupCntlr.VALUE_CHANGE:
+                if (adqlReducer(fields)) {
+                    return true;
+                }
+                break;
+            default:
+                return true;
+        }
+    };
+
+    validationReducers.fieldMap['obsCoreCollection'] = validationReducer;
+    validationReducers.fieldMap['obsCoreTypeSelection'] = validationReducer;
+    validationReducers.fieldMap['obsCoreSubType'] = validationReducer;
+    constraintReducers.adqlReducerList.push(adqlReducer);
+    constraintReducers.siaReducerList.push(siaReducer);
+
     return (
-        <FieldGroupCollapsible header={<Header title={ObsCore} helpID={tapHelpId('obsCore')}
-                                               checkID={TemporalCheck} message={message}/>}
+        <FieldGroupCollapsible header={<Header title={'ObsCore'} helpID={tapHelpId('obsCore')}
+                                               checkID={'ObsCoreCheck'} message={message}/>}
                                initialState={{ value: 'closed' }}
-                               fieldKey={ObsCorePanel}
+                               fieldKey={'obsCorePanel'}
                                wrapperStyle={{marginBottom: 15}}
                                headerStyle={HeaderFont}>
 
             <div style={{display:'flex', flexDirection:'column', flexWrap:'no-wrap',
                 width: SpatialWidth, marginTop: 5}}>
-                {showStringField(ObsCoreCollection)}
-                {calibrationSearchList()}
-                {typeSearchList()}
-                {hasSubType && showStringField(ObsCoreSubtype)}
+                <div style={{marginTop: '5px'}}>
+                    <ValidationField
+                        fieldKey={'obsCoreCollection'}
+                        groupKey={skey}
+                        inputWidth={Width_Column}
+                        inputStyle={{overflow:'auto', height:16}}
+                        tooltip={'Select ObsCore Collection name'}
+                        label={'Collection:'}
+                        labelWidth={LableSaptail}
+                        validator={fakeValidator}
+                    />
+                </div>
+                <div style={{display:'flex', flexDirection:'column', marginTop: '5px'}}>
+                    <ListBoxInputField
+                        fieldKey={'obsCoreCalibrationSelection'}
+                        options={calibrationOptions()}
+                        tooltip={'Select ObsCore Calibration Level'}
+                        label={'Calibration Level:'}
+                        labelWidth={LableSaptail}
+                        initialState={{value: 'ALL'}}
+                        multiple={false}
+                    />
+                </div>
+                <div style={{display:'flex', flexDirection:'column'}}>
+                    <ListBoxInputField
+                        fieldKey={'obsCoreTypeSelection'}
+                        tooltip={'Select ObsCore Dataproduct Type'}
+                        label={'Dataproduct Type:'}
+                        labelWidth={LableSaptail}
+                        initialState={{value: 'IMAGE'}}
+                        options={typeOptions()}
+                        wrapperStyle={{marginRight:'15px', padding:'8px 0 5px 0'}}
+                        multiple={false}
+                    />
+                </div>
+                <div style={{marginTop: '5px'}}>
+                    <ValidationField
+                        fieldKey={'obsCoreSubType'}
+                        groupKey={skey}
+                        inputWidth={Width_Column}
+                        inputStyle={{overflow:'auto', height:16}}
+                        tooltip={'Select ObsCore Dataproduct Subtype name'}
+                        label={'Dataproduct Subtype:'}
+                        labelWidth={LableSaptail}
+                        validator={fakeValidator}
+                    />
+                </div>
             </div>
         </FieldGroupCollapsible>
     );
@@ -768,9 +1046,8 @@ ObsCoreSearch.propTypes = {
  * @param fields
  * @returns {null}
  */
-function renderTargetPanel(groupKey, fields) {
-    const searchType = get(fields, [SpatialMethod, 'value'], TapSpatialSearchMethod.Cone.value);
-    const visible = (searchType === TapSpatialSearchMethod.Cone.value);
+function renderTargetPanel(groupKey, fields, spatialMethod) {
+    const visible = (spatialMethod === TapSpatialSearchMethod.Cone.value);
     const targetSelect = () => {
         return (
             <div style={{height: 70, display:'flex', justifyContent: 'flex-start', alignItems: 'center'}}>
@@ -788,9 +1065,9 @@ function renderTargetPanel(groupKey, fields) {
  * @param radiusInArcSec
  * @returns {*}
  */
-function setSpatialSearchSize(fields, radiusInArcSec) {
+function setSpatialSearchSize(fields, radiusInArcSec, spatialMethod) {
     const border = '1px solid #a3aeb9';
-    const searchType = get(fields, [SpatialMethod, 'value'], TapSpatialSearchMethod.Cone.value);
+    const searchType = spatialMethod;
 
     if (searchType === TapSpatialSearchMethod.Cone.value) {
         return (
@@ -928,7 +1205,7 @@ function makeSpatialConstraints(fields, columnsModel) {
     return retval;
 }
 
-function makeTemporalConstraints(fields, columnsModel) {
+function makeTemporalConstraints(fields, columnsModel, obsCoreEnabled) {
     const retval = clone(defaultTemporalConstraints);
     const timeColumns = get(fields, [TemporalColumns, 'value'], '').trim().split(',').reduce((p, c) => {
         if (c.trim()) p.push(c.trim());
@@ -993,6 +1270,8 @@ function makeTemporalConstraints(fields, columnsModel) {
  * @returns {AdqlFragment}
  */
 export function tableSearchMethodsConstraints(columnsModel) {
+    // FIXME: we rerun heuristic when we should already know, but it's pretty cheap
+    const obsCoreEnabled = matchesObsCoreHeuristic(undefined, undefined, columnsModel);
     // construct ADQL string here
     const fields = FieldGroupUtils.getGroupFields(skey);
 
@@ -1036,7 +1315,54 @@ export function tableSearchMethodsConstraints(columnsModel) {
     return adql;
 }
 
-function tapSearchMethodReducer(columnsModel) {
+// export function newTableSearchMethodsConstraints(columnsModel) {
+//
+//     // FIXME: we rerun heuristic when we should already know, but it's pretty cheap
+//     const obsCoreEnabled = matchesObsCoreHeuristic(undefined, undefined, columnsModel);
+//     // construct ADQL string here
+//     const fields = FieldGroupUtils.getGroupFields(skey);
+//
+//     let   adql;
+//     const validInfo = validateConstraints(fields);
+//     if (!validInfo.valid) {
+//         adql = {valid: false, message: validInfo.message, title: 'constraints entry error'};
+//         showInfoPopup(adql.message, adql.title);
+//         return adql;
+//     }
+//
+//     const spatialConstraints = isPanelChecked(Spatial, fields) ? makeSpatialConstraints(fields, columnsModel)
+//         : clone(defaultSpatialConstraints);
+//     const timeConstraints = isPanelChecked(Temporal, fields) ? makeTemporalConstraints(fields, columnsModel)
+//         : clone(defaultTemporalConstraints);
+//
+//     adql = [spatialConstraints, timeConstraints].reduce((p, oneCondition) => {
+//         p.valid = p.valid && oneCondition.valid;
+//         if (!p.valid) {
+//             p.where = '';
+//             if (oneCondition.message && !p.message) {
+//                 p.message = oneCondition.message;
+//                 p.title = oneCondition.title;
+//             }
+//         } else {
+//             if (p.where && oneCondition.where) {
+//                 p.where += ' AND (' + oneCondition.where + ')';
+//             } else {
+//                 p.where += oneCondition.where;
+//             }
+//         }
+//
+//         return p;
+//
+//     }, {where: '', valid: true, message: '', title: ''});
+//
+//     if (!adql.valid) {
+//         showInfoPopup((adql.message || 'search constraints error'),  (adql.title ||'search error'));
+//     }
+//
+//     return adql;
+// }
+
+function buildTapSearchMethodReducer(columnsModel) {
     return (inFields, action) => {
 
         if (!inFields)  {
@@ -1179,6 +1505,12 @@ function tapSearchMethodReducer(columnsModel) {
                 }
             };
 
+            const onChangeObsCoreWidget = (key) => {
+                console.log('onChangeObsCoreWidget:: values changed');
+                console.log(inFields);
+                console.log(rFields);
+            };
+
             const onResetColumnsTable = () => {
                 const cols = getAvailableColumns(columnsModel);
                 set(rFields, [CrtColumnsModel, 'value'], columnsModel.tbl_id );
@@ -1197,6 +1529,7 @@ function tapSearchMethodReducer(columnsModel) {
 
 
             switch (action.type) {
+
                 case FieldGroupCntlr.VALUE_CHANGE:
                     if (fieldKey === PolygonCorners) {
                         onChangePolygonCoordinates(rFields);
@@ -1212,6 +1545,8 @@ function tapSearchMethodReducer(columnsModel) {
                         onChangeDateTimePicker();
                     } else if (fieldKey === SpatialCheck || fieldKey === TemporalCheck || fieldKey === WavelengthCheck) {
                         onChangeSearchCheckBox(fieldKey);
+                    //} else if (fieldKey === ObsCoreCheck) {
+                    //    onChangeObsCoreWidget(fieldKey);
                     } else {
                         setSearchPanelChecked(fieldKey);
 
@@ -1232,11 +1567,51 @@ function tapSearchMethodReducer(columnsModel) {
                     }
                     break;
             }
-
+            const adqlConstraints = [];
+            const siaConstraints = [];
+            constraintReducers.adqlReducerList.forEach((adqlReducer) => {
+                const {adqlConstraint, adqlConstraintError} = adqlReducer(inFields);
+                if (!adqlConstraintError) {
+                    adqlConstraints.push(adqlConstraint);
+                } else {
+                    console.log(adqlConstraintError);
+                }
+            });
+            constraintReducers.siaReducerList.forEach((siaReducer) => {
+                const {siaConstraint, siaConstraintError} = siaReducer(inFields);
+                if (!siaConstraintError) {
+                    siaConstraints.push(siaConstraint);
+                } else {
+                    console.log(siaConstraintError);
+                }
+            });
+            console.log(adqlConstraints.join(' AND '));
+            console.log(siaConstraints.join('?'));
             return rFields;
         }
     };
 }
+
+// function buildGenericReducer(validationReducers) {
+//
+//     return (inFields, action) => {
+//         // fields are initialized in their components
+//
+//         const nextStateFields = clone(inFields);
+//         const {fieldKey, value, displayValue} = action.payload;
+//         const reducer = validationReducers.fieldMap[fieldKey];
+//         reducer(fieldKey, nextStateFields, action);
+//         const constraints = [];
+//         constraintReducers.adqlReducerList.forEach((i, adqlReducer) => {
+//             const {adqlConstraint, adqlConstraintError} = adqlReducer(inFields);
+//             if (!adqlConstraintError) {
+//                 constraints.push(adqlConstraint);
+//             }
+//         });
+//         constraintReducers.constraints = constraints;
+//         return nextStateFields;
+//     };
+// };
 
 /**
  * Assembles an array of objects with column attributes in the format that ColumnFld accepts
@@ -1581,6 +1956,22 @@ function fieldInit(columnsTable) {
                 labelWidth: LabelWidth,
                 validator: getColValidator(cols, false, false)
             },
+            [SRegionColumn]: {
+                fieldKey: SRegionColumn,
+                value: 's_region',
+                tooltip: 'Spatial Region column for spatial search (ObsCore)',
+                label: getLabel(SRegionColumn, ':'),
+                labelWidth: LabelWidth,
+                //validator: getColValidator(cols, false, false)
+            },
+            [ExposureColumns]: {
+                fieldKey: ExposureColumns,
+                value: 't_exptime',
+                tooltip: 'Column for expsoure time search',
+                label: getLabel(ExposureColumns, ':'),
+                labelWidth: LabelWidth,
+                //validator: getColValidator(cols, false, false)
+            },
             [SpatialMethod]: {
                 fieldKey: SpatialMethod,
                 tooltip: 'Select spatial search method',
@@ -1600,7 +1991,7 @@ function fieldInit(columnsTable) {
                 fieldKey: PolygonCorners,
                 value: ''
             },
-            [ObsCoreCollection]: {
+            /*[ObsCoreCollection]: {
                 fieldKey: ObsCoreCollection,
                 tooltip: 'Select ObsCore Collection name',
                 label: getLabel(ObsCoreCollection, ':'),
@@ -1614,42 +2005,37 @@ function fieldInit(columnsTable) {
                 value: 'ALL'
             },
             [ObsCoreTypeSelection]: {
-                fieldKey: ObsCoreTypeSelection,
-                tooltip: 'Select ObsCore Dataproduct Type',
-                label: getLabel(ObsCoreTypeSelection, ':'),
-                labelWidth: LableSaptail,
-                value: 'IMAGE'
             },
             [ObsCoreSubtype]: {
                 fieldKey: ObsCoreSubtype,
                 tooltip: 'Select ObsCore Dataproduct Subtype name',
                 label: getLabel(ObsCoreSubtype, ':'),
                 labelWidth: LableSaptail
-            },
-            [ExposureStartFrom]:{
-                fieldKey: ExposureStartFrom,
-                value: '',
-                validator: timeValidator,
-                tooltip:  "'Exposure start from' time in iso mode"
-            },
-            [ExposureStartTo]:{
-                fieldKey: ExposureStartTo,
-                value: '',
-                validator: timeValidator,
-                tooltip: "'Exposure start to' time in iso mode"
-            },
-            [ExposureEndFrom]:{
-                fieldKey: ExposureEndFrom,
-                value: '',
-                validator: timeValidator,
-                tooltip:  "'Exposure end from' time in iso mode"
-            },
-            [ExposureEndTo]:{
-                fieldKey: ExposureEndTo,
-                value: '',
-                validator: timeValidator,
-                tooltip: "'Exposure end to' time in iso mode"
-            },
+            },*/
+            // [ExposureStartFrom]:{
+            //     fieldKey: ExposureStartFrom,
+            //     value: '',
+            //     validator: timeValidator,
+            //     tooltip:  "'Exposure start from' time in iso mode"
+            // },
+            // [ExposureStartTo]:{
+            //     fieldKey: ExposureStartTo,
+            //     value: '',
+            //     validator: timeValidator,
+            //     tooltip: "'Exposure start to' time in iso mode"
+            // },
+            // [ExposureEndFrom]:{
+            //     fieldKey: ExposureEndFrom,
+            //     value: '',
+            //     validator: timeValidator,
+            //     tooltip:  "'Exposure end from' time in iso mode"
+            // },
+            // [ExposureEndTo]:{
+            //     fieldKey: ExposureEndTo,
+            //     value: '',
+            //     validator: timeValidator,
+            //     tooltip: "'Exposure end to' time in iso mode"
+            // },
             [DatePickerOpenStatus]: {
                 fieldKey: DatePickerOpenStatus,
                 value: [false, false]
@@ -1686,7 +2072,14 @@ function fieldInit(columnsTable) {
                 value: '',
                 validator: timeValidator,
                 tooltip: "'to' time in iso mode"
-            }
+            },
+            // [WavelengthUnits]: {
+            //     fieldKey: WavelengthUnits,
+            //     tooltip: 'Select wavelength units',
+            //     label: getLabel(WavelengthUnits, ':'),
+            //     labelWidth: LableSaptail,
+            //     value: 'nm'
+            // },
         }
     );
 }

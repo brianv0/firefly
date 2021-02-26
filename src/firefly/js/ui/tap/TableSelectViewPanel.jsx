@@ -26,7 +26,7 @@ import {TableColumnsConstraints, TableColumnsConstraintsToolbar} from './TableCo
 import './TableSelectViewPanel.css';
 import {matchesObsCoreHeuristic} from '../../util/VOAnalyzer';
 
-
+// const OBSCORE_TABLES_COMPONENT_KEY = 'obsCoreTables';
 
 /**
  * group key for fieldgroup comp
@@ -67,7 +67,6 @@ function useStateRef(initialState){
 
 export function BasicUI(props) {
     const tapFluxState = getTapBrowserState();
-    // const isObsTap = props.obsTap !== undefined ? props.obsTap : false;
     const [error, setError] = useState(undefined);
     const [serviceUrl, serviceUrlRef, setServiceUrl] = useStateRef(tapFluxState.serviceUrl || props.serviceUrl);
     const [schemaName, schemaRef, setSchemaName] = useStateRef(tapFluxState.schemaName || props.initArgs.schema);
@@ -179,7 +178,7 @@ export function BasicUI(props) {
             setTapBrowserState({serviceUrl: requestServiceUrl, schemaName: requestSchemaName, schemaOptions: schemaOptions,
                 tableName: requestTableName, tableOptions: tableOptions, columnsModel: columnsModel, obsCoreEnabled: matchesObsCore, obsCoreTables: obsCoreTables});
         });
-    }
+    };
     useEffect(() => {
         // properties changes due to changes in TapSearchPanel
         if(props.serviceUrl !== serviceUrl) {
@@ -250,7 +249,7 @@ export function BasicUI(props) {
                 <div className='expandable'>
                     <SplitPane split='vertical' maxSize={splitMax} mixSize={20} defaultSize={splitDef}>
                         <SplitContent>
-                            {columnsModel ?  <TableSearchMethods initArgs={props.initArgs} columnsModel={columnsModel}/>
+                            {columnsModel ?  <TableSearchMethods initArgs={props.initArgs} columnsModel={columnsModel} obsCoreEnabled={obsCoreEnabled}/>
                                 : <div className='loading-mask'/>
                             }
                         </SplitContent>
@@ -270,7 +269,7 @@ export function BasicUI(props) {
             </div>
 
         </Fragment>
-    )
+    );
 }
 
 

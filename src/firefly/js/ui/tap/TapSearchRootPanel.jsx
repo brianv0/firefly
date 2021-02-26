@@ -91,8 +91,11 @@ export function TapSearchPanel({initArgs= {}, titleOn=true}) {
     const tapOps= getTapServiceOptions();
     const {current:clickFuncRef} = useRef({clickFunc:undefined});
     const [selectBy, setSelectBy]= useState('basic');
+    const [obsCoreTables, setObsCoreTables] = useState();
     const [serviceUrl, setServiceUrl]= useState(() => getInitServiceUrl(initArgs,tapOps));
     activateInitArgsAdqlOnce(initArgs);
+
+    const obsCoreEnabled = obsCoreTables?.length > 0;
 
     const onTapServiceOptionSelect= (selectedOption) => {
         if (!selectedOption) return;
@@ -103,11 +106,14 @@ export function TapSearchPanel({initArgs= {}, titleOn=true}) {
             ]
         );
         setServiceUrl(selectedOption.value);
+        setObsCoreTables(undefined);
     };
 
     useEffect(() => {
         return FieldGroupUtils.bindToStore( gkey, (fields) => {
             setSelectBy(getFieldVal(gkey,'selectBy',selectBy));
+            const obsCoreTables = getTapBrowserState().obsCoreTables;
+            setObsCoreTables(obsCoreTables);
             searchFromAPIOnce( () => validateAutoSearch(fields,initArgs), () => setTimeout(() => clickFuncRef.clickFunc?.(), 5));
         });
     }, []);
@@ -124,7 +130,7 @@ export function TapSearchPanel({initArgs= {}, titleOn=true}) {
                         submitBarStyle={{padding: '2px 3px 3px'}}
                         help_id = {tapHelpId('form')} >
                 <TapSearchPanelComponents {...{
-                    initArgs, selectBy, serviceUrl, onTapServiceOptionSelect, titleOn, tapOps}} />
+                    initArgs, selectBy, serviceUrl, onTapServiceOptionSelect, titleOn, tapOps, obsCoreEnabled}} />
             </FormPanel>
         </div>
     );
@@ -154,7 +160,7 @@ const SectionTitle= ({title,helpId}) => (
     <div className='TapSearch__section--title'>{title}<HelpIcon helpId={tapHelpId(helpId)}/></div>);
 
 
-function TapSearchPanelComponents({initArgs, serviceUrl, onTapServiceOptionSelect, tapOps, titleOn=true, selectBy}) {
+function TapSearchPanelComponents({initArgs, serviceUrl, onTapServiceOptionSelect, tapOps, titleOn=true, selectBy, obsCoreEnabled}) {
 
     const label= (serviceUrl && (tapOps.find( (e) => e.value===serviceUrl)?.labelOnly)) || '';
     const placeholder = serviceUrl ? `${serviceUrl} - Replace...` : 'Select TAP...';
@@ -163,6 +169,11 @@ function TapSearchPanelComponents({initArgs, serviceUrl, onTapServiceOptionSelec
         ...tableSelectStyleEnhancedTemplate,
         placeholder: (provided) => ({ ...provided, ':before': makePlaceHolderBeforeStyle(label) })
     };
+
+    const options = [{label: 'Single Table', value: 'basic'}, {label: 'ADQL', value: 'adql'}];
+    if (obsCoreEnabled) {
+        options.push({label: 'ObsCore', value: 'obscore'});
+    }
 
     return (
         <FieldGroup groupKey={gkey} keepState={true} style={{flexGrow: 1, display: 'flex'}}>
@@ -183,9 +194,10 @@ function TapSearchPanelComponents({initArgs, serviceUrl, onTapServiceOptionSelec
                         fieldKey = 'selectBy'
                         initialState = {{
                             defaultValue: 'basic',
-                            options: [{label: 'Single Table', value: 'basic'}, {label: 'ADQL', value: 'adql'}],
+                            options: options,
                             tooltip: 'Please select an interface type to use'
                         }}
+                        options = {options}
                         wrapperStyle={{alignSelf: 'center'}}
                     />
                 </div>

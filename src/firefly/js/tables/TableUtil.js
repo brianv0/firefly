@@ -1419,4 +1419,3 @@ function watchForTableLoaded(afterLoaded, tbl_id) {
     }
 }
 
-
