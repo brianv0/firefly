@@ -22,7 +22,7 @@ import {
     onChangeTimeMode,
     getTimeInfo,
     checkField,
-    updatePanelFields
+    updatePanelFields, isPanelChecked
 } from 'firefly/ui/tap/TableSearchHelpers';
 import {ColsShape} from '../../charts/ui/ColumnOrExpression';
 import {convertISOToMJD, validateDateTime, validateMJD} from 'firefly/ui/DateTimePickerField';
@@ -155,18 +155,32 @@ export function ObsCoreSearch({cols, groupKey, fields, useAdqlReducer, useSiaRed
 
     const constraintReducer = (fields, newFields) => {
         const fieldsValidity = new Map();
-        const {obsCoreCheck} = fields;
-        const panelActive = obsCoreCheck?.value === 'ObsCore';
-
+        const panelActive = isPanelChecked(panelTitle, fields);
         const siaConstraints = [];
         const siaConstraintErrors = new Map();
+        let adqlConstraint = '';
+        const adqlConstraintErrors = [];
         const constraintsResult = makeConstraints(fields, fieldsValidity, panelActive);
-        updatePanelFields(constraintsResult.fieldsValidity, fields, newFields, panelTitle);
+        updatePanelFields(constraintsResult.fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle);
+        if (isPanelChecked(panelTitle, newFields)) {
+            if (constraintsResult.valid){
+                if (constraintsResult.adqlConstraint?.length > 0){
+                    adqlConstraint = constraintsResult.adqlConstraint;
+                } else {
+                    adqlConstraintErrors.push(`Unknown error processing ${panelTitle} constraints`);
+                }
+                if  (constraintsResult.siaConstraints?.length > 0){
+                    siaConstraints.concat(constraintsResult.siaConstraints);
+                }
+            } else if (!constraintsResult.adqlConstraint) {
+                console.log(`invalid ${panelTitle} adql constraints`);  // FIXME: remove before merge
+            }
+        }
         return {
-            adqlConstraint: constraintsResult.adqlConstraint,
-            adqlConstraintErrors: undefined,
-            siaConstraint: siaConstraints.join('&'),
-            siaConstraintErrors: siaConstraintErrors
+            adqlConstraint,
+            adqlConstraintErrors,
+            siaConstraints,
+            siaConstraintErrors
         };
     };
 

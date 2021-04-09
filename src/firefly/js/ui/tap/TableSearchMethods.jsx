@@ -252,6 +252,7 @@ const FunctionalTableSearchMethods = (props) => {
 export const TableSearchMethods = FunctionalTableSearchMethods;
 
 function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCoreEnabled, useAdqlReducer, useSiaReducer, useFieldGroupReducer}) {
+    const panelTitle = Spatial;
     const {POSITION:worldPt, radiusInArcSec}= initArgs;
     const [spatialMethod, setSpatialMethod] = useState(TapSpatialSearchMethod.Cone.value);
     const [spatialRegionOperation, setSpatialRegionOperation] = useState('contains_shape');
@@ -306,29 +307,34 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
     };
 
     const constraintReducer = function(fields, newFields) {
-        const adqlConstraints = [];
-        const adqlConstraintErrors = [];
+        const fieldsValidity = new Map();
+        const panelActive = isPanelChecked(panelTitle, fields);
 
         const siaConstraints = [];
-        const siaConstraintErrors = [];
-
-        // Process constraints because we also do validation
-        const spatialConstraints = makeSpatialConstraints(fields, columnsModel, newFields);
-        updatePanelFields(spatialConstraints.fieldsValidity, fields, newFields, Spatial);
-        if (isPanelChecked(Spatial, fields)) {
-            if (spatialConstraints.valid && spatialConstraints.adqlConstraint?.length > 0){
-                adqlConstraints.push(spatialConstraints.adqlConstraint);
-            } else if (!spatialConstraints.valid) {
-                console.log('invalid spatial constraints'); // FIXME: Debug?
-            } else {
-                adqlConstraintErrors.push('Unknown error processing spatial constraints');
+        const siaConstraintErrors = new Map();
+        let adqlConstraint = '';
+        const adqlConstraintErrors = [];
+        const constraintsResult = makeSpatialConstraints(fields, columnsModel, newFields);
+        updatePanelFields(constraintsResult.fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle);
+        if (isPanelChecked(panelTitle, newFields)) {
+            if (constraintsResult.valid){
+                if (constraintsResult.adqlConstraint?.length > 0){
+                    adqlConstraint = constraintsResult.adqlConstraint;
+                } else {
+                    adqlConstraintErrors.push(`Unknown error processing ${panelTitle} constraints`);
+                }
+                if  (constraintsResult.siaConstraints?.length > 0){
+                    siaConstraints.concat(constraintsResult.siaConstraints);
+                }
+            } else if (!constraintsResult.adqlConstraint) {
+                console.log(`invalid ${panelTitle} adql constraints`);  // FIXME: remove before merge
             }
         }
         return {
-            adqlConstraint: adqlConstraints.join(' AND '),
-            adqlConstraintErrors: undefined,
-            siaConstraint: siaConstraints.join('&'),
-            siaConstraintErrors: siaConstraintErrors
+            adqlConstraint,
+            adqlConstraintErrors,
+            siaConstraints,
+            siaConstraintErrors
         };
     };
 
@@ -846,8 +852,7 @@ function makeSpatialConstraints(fields, columnsModel, newFields) {
     };
 
     const {spatialRegionOperation} = fields;
-    if (centerLatColumns?.mounted || spatialRegionOperation?.value === 'center_contained') {
-        // The following should always be s_ra, s_dec for ObsCore/center_contained
+    if (centerLatColumns?.mounted) {
         checkField(CenterLonColumns, fieldsValidity);
         checkField(CenterLatColumns, fieldsValidity);
         const ucdCoord = getUCDCoord(centerLonColumns.value);
@@ -884,10 +889,18 @@ function makeSpatialConstraints(fields, columnsModel, newFields) {
             if (userAreaResult.valid) {
                 adqlConstraint = `INTERSECTS(${userAreaResult.userArea}, s_region)=1`;
             }
+        } else if (spatialRegionOperation.value === 'center_contained') {
+            // Same as non-ObsCore, but with fixed s_ra/s_dec columns
+            const point = `POINT('${adqlCoordSys}', s_ra, s_dec)`;
+            const userAreaResult = checkUserArea(spatialMethod, fields, worldSys, adqlCoordSys);
+            userAreaResult.fieldsValidity.forEach((value, key) => fieldsValidity.set(key, value));
+            if (userAreaResult.valid) {
+                adqlConstraint = `CONTAINS(${point},${userAreaResult.userArea})=1`;
+            }
         }
     }
     // We don't want to say we are valid unless enough components were mounted and checked.
-    const enoughMounted = centerLatColumns?.mounted || spatialRegionOperation?.mounted;
+    const enoughMounted = centerLatColumns?.mounted || spatialRegionOperation?.mounted || false;
     retval.fieldsValidity = fieldsValidity;
     retval.valid = Array.from(fieldsValidity.values()).every((validity) => validity.valid) && enoughMounted;
     retval.adqlConstraint = adqlConstraint;
