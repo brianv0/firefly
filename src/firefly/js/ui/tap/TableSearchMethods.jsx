@@ -1,17 +1,16 @@
 import React,  {PureComponent, useState, useEffect} from 'react';
 import PropTypes from 'prop-types';
-import {flux} from '../../core/ReduxFlux.js';
 import {get, set, isUndefined, has} from 'lodash';
 import Enum from 'enum';
 import FieldGroupUtils, {getFieldVal} from '../../fieldGroup/FieldGroupUtils.js';
 import {ListBoxInputField} from '../ListBoxInputField.jsx';
 import {FieldGroup} from '../FieldGroup.jsx';
-import {findCenterColumnsByColumnsModel, matchesObsCoreHeuristic, posCol, UCDCoord} from '../../util/VOAnalyzer.js';
+import {findCenterColumnsByColumnsModel, posCol, UCDCoord} from '../../util/VOAnalyzer.js';
 import FieldGroupCntlr, {dispatchValueChange} from '../../fieldGroup/FieldGroupCntlr.js';
 import {TargetPanel} from '../../ui/TargetPanel.jsx';
 import {SizeInputFields} from '../SizeInputField.jsx';
 import {ServerParams} from '../../data/ServerParams.js';
-import {getColumnIdx, getTblById} from '../../tables/TableUtil.js';
+import {getColumnIdx} from '../../tables/TableUtil.js';
 import {makeWorldPt, parseWorldPt} from '../../visualize/Point.js';
 import {convert} from '../../visualize/VisUtil.js';
 import {primePlot, getActivePlotView} from '../../visualize/PlotViewUtil.js';
@@ -21,16 +20,10 @@ import {renderPolygonDataArea,  calcCornerString} from '../CatalogSearchMethodTy
 import {clone} from '../../util/WebUtil.js';
 import {FieldGroupCollapsible} from '../panel/CollapsiblePanel.jsx';
 import {RadioGroupInputField} from '../RadioGroupInputField.jsx';
-import {validateMJD, validateDateTime, convertISOToMJD, convertMJDToISO, DateTimePickerField, fMoment,
-        tryConvertToMoment} from '../DateTimePickerField.jsx';
-import {TimePanel, isShowHelp, formFeedback} from '../TimePanel.jsx';
-import {showInfoPopup, showOptionsPopup, POPUP_DIALOG_ID} from '../PopupUtil.jsx';
-import {isDialogVisible} from '../../core/ComponentCntlr.js';
+import {validateMJD, validateDateTime, convertMJDToISO} from '../DateTimePickerField.jsx';
+import {TimePanel} from '../TimePanel.jsx';
 import {getColumnAttribute, tapHelpId, HeaderFont, MJD, ISO} from './TapUtil.js';
-import {HelpIcon} from '../HelpIcon.jsx';
 import {ColsShape, ColumnFld, getColValidator} from '../../charts/ui/ColumnOrExpression';
-import {CheckboxGroupInputField} from '../CheckboxGroupInputField.jsx';
-import {ValidationField} from '../ValidationField.jsx';
 import {
     changeDatePickerOpenStatus,
     Header,
@@ -40,7 +33,13 @@ import {
     LabelWidth,
     LableSaptail,
     SpatialWidth,
-    Width_Column, Width_Time_Wrapper, onChangeTimeField, onChangeTimeMode, onChangeDateTimePicker, updatePanelFields
+    Width_Column,
+    Width_Time_Wrapper,
+    onChangeTimeField,
+    onChangeTimeMode,
+    onChangeDateTimePicker,
+    updatePanelFields,
+    isPanelChecked
 } from 'firefly/ui/tap/TableSearchHelpers';
 // import '../CatalogSearchMethodType.css';
 // import './react-datetime.css';
@@ -116,16 +115,6 @@ function isFieldInPanel(fieldKey) {
     return Object.keys(fieldsMap).find((panel) => {
                return Object.keys(fieldsMap[panel]).includes(fieldKey);
            });
-}
-
-function isPanelChecked(searchItem, fields) {
-    const checkKey = searchItem.toLowerCase() + 'Check';
-    return get(fields, [ checkKey, 'value' ]) === searchItem;
-}
-
-function setPanelChecked(searchItem, fields) {
-    const checkKey = searchItem.toLowerCase() + 'Check';
-    return set(fields, [ checkKey, 'value' ], searchItem);
 }
 
 function getLabel(key, trailing='') {
