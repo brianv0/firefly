@@ -50,7 +50,7 @@ function timeValidator(fieldKey) {
     };
 }
 
-export function ObsCoreSearch({cols, groupKey, fields, useAdqlReducer, useSiaReducer}) {
+export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
     const panelTitle = 'ObsCore';
     const panelPrefix = 'obsCore';
 
@@ -170,7 +170,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useAdqlReducer, useSiaRed
                     adqlConstraintErrors.push(`Unknown error processing ${panelTitle} constraints`);
                 }
                 if  (constraintsResult.siaConstraints?.length > 0){
-                    siaConstraints.concat(constraintsResult.siaConstraints);
+                    siaConstraints.push(...constraintsResult.siaConstraints);
                 }
             } else if (!constraintsResult.adqlConstraint) {
                 console.log(`invalid ${panelTitle} adql constraints`);  // FIXME: remove before merge
@@ -184,18 +184,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useAdqlReducer, useSiaRed
         };
     };
 
-    const adqlReducer = (fields, newFields) => {
-        const {adqlConstraint, adqlConstraintErrors} = constraintReducer(fields, newFields);
-        return {adqlConstraint, adqlConstraintErrors};
-    };
-
-    const siaReducer = (fields, newFields) => {
-        const {siaConstraint, siaConstraintErrors} = constraintReducer(fields, newFields);
-        return {siaConstraint, siaConstraintErrors};
-    };
-
-    const adqlResult = useAdqlReducer(panelPrefix, adqlReducer);
-    const siaResult = useSiaReducer(panelPrefix, siaReducer);
+    const constraintResult = useConstraintReducer(panelPrefix, constraintReducer);
 
     return (
         <FieldGroupCollapsible header={<Header title={panelTitle} helpID={tapHelpId(panelPrefix)}
@@ -258,8 +247,8 @@ export function ObsCoreSearch({cols, groupKey, fields, useAdqlReducer, useSiaRed
                     />
                 </div>
                 {DEBUG_OBSCORE && <div>
-                    adql fragment: {adqlResult?.adqlConstraint} <br/>
-                    sia fragment: {siaResult?.siaConstraintErrors?.length ? `Error: ${siaResult.siaConstraintErrors.join(' ')}` : siaResult?.siaConstraint}
+                    adql fragment: {constraintResult?.adqlConstraint} <br/>
+                    sia fragment: {constraintResult?.siaConstraintErrors?.length ? `Error: ${constraintResult.siaConstraintErrors.join(' ')}` : constraintResult?.siaConstraints.join('&')}
                 </div>}
             </div>
         </FieldGroupCollapsible>
@@ -273,7 +262,7 @@ ObsCoreSearch.propTypes = {
 };
 
 
-export function ExposureDurationSearch({cols, groupKey, fields, useAdqlReducer, useSiaReducer, useFieldGroupReducer}) {
+export function ExposureDurationSearch({cols, groupKey, fields, useConstraintReducer, useFieldGroupReducer}) {
     const [rangeType, setRangeType] = useState('range');
     const [expTimeMode, setExpTimeMode] = useState(ISO);
     const [expMin, setExpMin] = useState();
@@ -309,7 +298,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useAdqlReducer, 
                     const maxValue = expMaxTimeInfo[MJD].value.length ? expMaxTimeInfo[MJD].value : '+Inf';
                     const rangeList = [[minValue, maxValue]];
                     adqlConstraints.push(adqlQueryRange('t_min', 't_max', rangeList, false));
-                    siaConstraints.push(siaQueryRange('TIME', rangeList));
+                    siaConstraints.push(...siaQueryRange('TIME', rangeList));
                 }
             } else if (ExposureRangeType?.value === 'since') {
                 const {exposureSinceValue, exposureSinceOptions} = fields;
@@ -330,14 +319,14 @@ export function ExposureDurationSearch({cols, groupKey, fields, useAdqlReducer, 
                     const mjdTime = convertISOToMJD(sinceString);
                     const rangeList = [[`${mjdTime}`, '+Inf']];
                     adqlConstraints.push(adqlQueryRange('t_min', 't_max', rangeList));
-                    siaConstraints.push(siaQueryRange('TIME', rangeList));
+                    siaConstraints.push(...siaQueryRange('TIME', rangeList));
                 }
             }
         }
         return {
             adqlConstraint: adqlConstraints.join(' AND '),
             adqlConstraintErrors: undefined,
-            siaConstraint: siaConstraints.join('&'),
+            siaConstraints,
             siaConstraintErrors
         };
     };
@@ -441,25 +430,14 @@ export function ExposureDurationSearch({cols, groupKey, fields, useAdqlReducer, 
                     }
                 </div>
                 {DEBUG_OBSCORE && <div>
-                    adql fragment: {adqlResult?.adqlConstraint} <br/>
-                    sia fragment: {siaResult?.siaConstraintErrors?.length ? `Error: ${siaResult.siaConstraintErrors.join(' ')}` : siaResult?.siaConstraint}
+                    adql fragment: {constraintResult?.adqlConstraint} <br/>
+                    sia fragment: {constraintResult?.siaConstraintErrors?.length ? `Error: ${constraintResult.siaConstraintErrors.join(' ')}` : constraintResult?.siaConstraints.join('&')}
                 </div>}
             </div>
         );
     };
 
-    const adqlReducer = (fields) => {
-        const {adqlConstraint, adqlConstraintErrors} = constraintReducer(fields);
-        return {adqlConstraint, adqlConstraintErrors};
-    };
-
-    const siaReducer = (fields) => {
-        const {siaConstraint, siaConstraintErrors} = constraintReducer(fields);
-        return {siaConstraint, siaConstraintErrors};
-    };
-
-    const adqlResult = useAdqlReducer('exposure', adqlReducer);
-    const siaResult = useSiaReducer('exposure', siaReducer);
+    const constraintResult = useConstraintReducer('exposure', constraintReducer);
 
     /* FIXME: exposure check */
     // const message = get(fields, [TemporalCheck, 'value']) === Temporal ?get(fields, [TemporalPanel, PanelMessage], '') :''; /* FIXME: exposure check */
@@ -525,6 +503,9 @@ function adqlQueryRange(lowerBound, upperBound, rangeList, contains=false) {
     return adqlFragmentList.length > 1 ? `( ${adqlFragment} )` : adqlFragment;
 }
 
+/*
+ * Takes a ranges list and returns a list of sia constraints (query params)
+ */
 function siaQueryRange(keyword, rangeList) {
     const siaFragmentList = [];
     rangeList.forEach((rangePair) =>{
@@ -535,10 +516,10 @@ function siaQueryRange(keyword, rangeList) {
             siaFragmentList.push(`${keyword}=${lowerValue} ${upperValue}`);
         }
     });
-    return siaFragmentList.join('&');
+    return siaFragmentList;
 }
 
-export function ObsCoreWavelengthSearch({cols, groupKey, fields, useAdqlReducer, useSiaReducer, useFieldGroupReducer}) {
+export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintReducer, useFieldGroupReducer}) {
     const [selectionType, setSelectionType] = useState('filter');
     const [rangeType, setRangeType] = useState('contains');
 
@@ -564,7 +545,6 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useAdqlReducer,
         const adqlConstraints = [];
         const siaConstraints = [];
         const siaConstraintErrors = [];
-        const validationError = [];
 
         // The reducer was added when the component was mounted but not before all parts of the
         // But fields show up later if we change between filter/numerical.
@@ -590,10 +570,8 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useAdqlReducer,
                     }
                 });
                 if (rangeList.length) {
-                    const adqlConstraint = adqlQueryRange('em_min', 'em_max', rangeList, true);
-                    const siaConstraint = siaQueryRange('BAND', rangeList);
-                    adqlConstraints.push(adqlConstraint);
-                    siaConstraints.push(siaConstraint);
+                    adqlConstraints.push(adqlQueryRange('em_min', 'em_max', rangeList, true));
+                    siaConstraints.push(...siaQueryRange('BAND', rangeList));
                 }
             }
             else if (obsCoreWavelengthSelectionType?.value === 'numerical' && obsCoreWavelengthUnits?.value) {
@@ -616,10 +594,8 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useAdqlReducer,
                         console.log('FIXME: Do something when not valid');
                     }
                     const rangeList = [[`${range}${exponent}`, `${range}${exponent}`]];
-                    const adqlConstraint = adqlQueryRange('em_min', 'em_max', rangeList, true);
-                    const siaConstraint = siaQueryRange('BAND', rangeList);
-                    adqlConstraints.push(adqlConstraint);
-                    siaConstraints.push(siaConstraint);
+                    adqlConstraints.push(adqlQueryRange('em_min', 'em_max', rangeList, true));
+                    siaConstraints.push(...siaQueryRange('BAND', rangeList));
                 }
                 if (obsCoreWavelengthRangeType?.value === 'overlaps') {
                     if (!obsCoreWavelengthMinRange?.valid || !obsCoreWavelengthMaxRange?.valid ||
@@ -631,10 +607,8 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useAdqlReducer,
                         const lowerValue = rawMin ? obsCoreWavelengthMinRange.value : `${obsCoreWavelengthMinRange.value}${exponent}`;
                         const upperValue = rawMax ? obsCoreWavelengthMaxRange.value : `${obsCoreWavelengthMaxRange.value}${exponent}`;
                         const rangeList = [[lowerValue, upperValue]];
-                        const adqlConstraint = adqlQueryRange('em_min', 'em_max', rangeList);
-                        const siaConstraint = siaQueryRange('BAND', rangeList);
-                        adqlConstraints.push(adqlConstraint);
-                        siaConstraints.push(siaConstraint);
+                        adqlConstraints.push(adqlQueryRange('em_min', 'em_max', rangeList));
+                        siaConstraints.push(...siaQueryRange('BAND', rangeList));
                     }
                 }
             }
@@ -642,23 +616,12 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useAdqlReducer,
         return {
             adqlConstraint: adqlConstraints.join(' AND '),
             adqlConstraintErrors: undefined,
-            siaConstraint: siaConstraints.join('&'),
+            siaConstraints,
             siaConstraintErrors
         };
     };
 
-    const adqlReducer = (fields) => {
-        const {adqlConstraint, adqlConstraintErrors} = constraintReducer(fields);
-        return {adqlConstraint, adqlConstraintErrors};
-    };
-
-    const siaReducer = (fields) => {
-        const {siaConstraint, siaConstraintErrors} = constraintReducer(fields);
-        return {siaConstraint, siaConstraintErrors};
-    };
-
-    const adqlResult = useAdqlReducer('wavelength', adqlReducer);
-    const siaResult = useSiaReducer('wavelength', siaReducer);
+    const constraintResult = useConstraintReducer('wavelength', constraintReducer);
 
     return (
         <FieldGroupCollapsible header={<Header title={'Wavelength'} helpID={tapHelpId('wavelength')}
@@ -751,8 +714,8 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useAdqlReducer,
                 </div>
                 }
                 {DEBUG_OBSCORE && <div>
-                    adql fragment: {adqlResult?.adqlConstraint} <br/>
-                    sia fragment: {siaResult?.siaConstraintErrors?.length ? `Error: ${siaResult.siaConstraintErrors.join(' ')}` : siaResult?.siaConstraint}
+                    adql fragment: {constraintResult?.adqlConstraint} <br/>
+                    sia fragment: {constraintResult?.siaConstraintErrors?.length ? `Error: ${constraintResult.siaConstraintErrors.join(' ')}` : constraintResult?.siaConstraints.join('&')}
                 </div>}
             </div>
         </FieldGroupCollapsible>

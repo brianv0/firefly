@@ -72,13 +72,11 @@ const TimeFrom = 'timeFrom';
 const TimeTo = 'timeTo';
 const TimeOptions = 'timeOptions';
 
-const AdqlResults = 'adqlResults';
+const ConstraintResults = 'constraintResults';
 
 
 const CrtColumnsModel = 'crtColumnsModel';
 
-const SomeFieldInvalid = 'invalid input';
-const PanelValid = 'panelValid';
 const PanelMessage = 'panelMessage';
 
 const fieldsMap = {[Spatial]: {
@@ -126,19 +124,29 @@ function getLabel(key, trailing='') {
 
 const constraintReducers = {};
 constraintReducers.adqlReducerMap = new Map();
-constraintReducers.siaReducerMap = new Map();
 const chainedReducers = new Map();
 
-function useAdqlReducer(component, adqlReducer, watchFields) {
-    const [adqlQueryResult, setAdqlQueryResult] = useState(null);
-    const fieldName = `${AdqlResults}.${component}`;
+/**
+ * Pseudo-hook for registering a constraint reducer.
+ * A constraints reducer takes in (fields, newFields), may modify
+ * newFields, and returns an object of the form:
+ * {adqlConstraints, adqlConstraintErrors, siaConstraints, siaConstraintErrors}
+ * adqlConstraints can usually be joined with AND, siaConstraints can be joined with &.
+ * @param component
+ * @param constraintReducer
+ * @param watchFields
+ * @returns {unknown}
+ */
+function useConstraintReducer(component, constraintReducer, watchFields) {
+    const [constraintResult, setConstraintResult] = useState(null);
+    const fieldName = `${ConstraintResults}.${component}`;
 
     useEffect(() => {
         function reduceQuery(fields, newFields) {
-            const adqlQueryResult = adqlReducer(fields, newFields);
-            newFields[fieldName] = adqlQueryResult;
-            setAdqlQueryResult(adqlQueryResult);
-            return adqlQueryResult;
+            const constraintResult = constraintReducer(fields, newFields);
+            newFields[fieldName] = constraintResult;
+            setConstraintResult(constraintResult);
+            return constraintResult;
         }
         constraintReducers.adqlReducerMap.set(component, reduceQuery);
         return () => {
@@ -148,8 +156,8 @@ function useAdqlReducer(component, adqlReducer, watchFields) {
 
     useEffect(() => {
         return FieldGroupUtils.bindToStore(skey, (fields) => {
-            const adqlResults = get(fields, [fieldName]);
-            setAdqlQueryResult(adqlResults);
+            const constraintResults = get(fields, [fieldName]);
+            setConstraintResult(constraintResults);
         });
     }, []);
 
@@ -159,25 +167,7 @@ function useAdqlReducer(component, adqlReducer, watchFields) {
         dispatchValueChange({...{value: ''}, fieldKey: fieldName, groupKey: skey});
     }, [...deps, fieldName]);
 
-    return adqlQueryResult;
-}
-
-function useSiaReducer(component, siaReducer) {
-    const [siaQueryResult, setSiaQueryResult] = useState(null);
-
-    useEffect(() => {
-        function reduceQuery(fields, newFields) {
-            const siaQueryResult = siaReducer(fields, newFields);
-            setSiaQueryResult(siaQueryResult);
-            return siaQueryResult;
-        }
-        constraintReducers.siaReducerMap.set(component, reduceQuery);
-        return () => {
-            constraintReducers.siaReducerMap.delete(component);
-        };
-    });
-
-    return siaQueryResult;
+    return constraintResult;
 }
 
 function useFieldGroupReducer(component, fieldGroupReducer) {
@@ -197,20 +187,20 @@ const FunctionalTableSearchMethods = (props) => {
     //const [columnsModel, setColumnsModel] = useState(props ? props.columnsModel : getTblById(get(fields, [CrtColumnsModel, 'value'])));
     const columnsModel = props.columnsModel;
     const groupKey = skey;
-    const [adqlResults, setAdqlResults] = useState();
+    const [constraintResults, setConstraintResults] = useState();
 
     useEffect(() => {
         setFields(FieldGroupUtils.getGroupFields(skey));
         return FieldGroupUtils.bindToStore(groupKey, (fields) => {
-            const {adqlResults} = fields;
-            setAdqlResults(adqlResults);
+            const {constraintResults} = fields;
+            setConstraintResults(constraintResults);
         });
     }, []);
 
     useEffect(() => {
         // We effectively want to invalidate the computed ADQL results when the
         // constraint reducers change. Dispatching an update will trigger the reducers.
-        dispatchValueChange({...{value: ''}, fieldKey: AdqlResults, groupKey});
+        dispatchValueChange({...{value: ''}, fieldKey: ConstraintResults, groupKey});
     }, [constraintReducers]);
 
     const obsCoreEnabled = props.obsCoreEnabled;
@@ -220,18 +210,24 @@ const FunctionalTableSearchMethods = (props) => {
     // We create a new reducer for this FieldGroup
     return (
         <FieldGroup style={{height: '100%', overflow: 'auto'}}
-                    groupKey={groupKey} keepState={true} reducerFunc={buildTapSearchMethodReducer(columnsModel, setAdqlResults)}>
-            {obsCoreEnabled && <ObsCoreSearch {...{cols, groupKey, fields, useAdqlReducer, useSiaReducer, useFieldGroupReducer}} />}
-            <SpatialSearch {...{cols, columnsModel, groupKey, fields, initArgs:props.initArgs, obsCoreEnabled, useAdqlReducer, useSiaReducer, useFieldGroupReducer}} />
-            {obsCoreEnabled && <ExposureDurationSearch {...{cols, groupKey, fields, useAdqlReducer, useSiaReducer, useFieldGroupReducer}} />}
-            {!obsCoreEnabled && <TemporalSearch {...{cols, columnsModel, groupKey, fields, obsCoreEnabled, useAdqlReducer, useSiaReducer, useFieldGroupReducer}} />}
-            {obsCoreEnabled && <ObsCoreWavelengthSearch {...{cols, groupKey, fields, useAdqlReducer, useSiaReducer, useFieldGroupReducer}} />}
+                    groupKey={groupKey} keepState={true} reducerFunc={buildTapSearchMethodReducer(columnsModel)}>
+            {obsCoreEnabled && <ObsCoreSearch {...{cols, groupKey, fields, useConstraintReducer, useFieldGroupReducer}} />}
+            <SpatialSearch {...{cols, columnsModel, groupKey, fields, initArgs:props.initArgs, obsCoreEnabled, useConstraintReducer, useFieldGroupReducer}} />
+            {obsCoreEnabled && <ExposureDurationSearch {...{cols, groupKey, fields, useConstraintReducer, useFieldGroupReducer}} />}
+            {!obsCoreEnabled && <TemporalSearch {...{cols, columnsModel, groupKey, fields, obsCoreEnabled, useConstraintReducer, useFieldGroupReducer}} />}
+            {obsCoreEnabled && <ObsCoreWavelengthSearch {...{cols, groupKey, fields, useConstraintReducer, useFieldGroupReducer}} />}
             {DEBUG_OBSCORE && <div>
                 adql WHERE: <br/>
-                {adqlResults?.adqlConstraints?.join(' AND ')}
+                {constraintResults?.adqlConstraints?.join(' AND ')}
                 <br/>
                 adql errors: <br/>
-                {adqlResults?.adqlConstraintErrors?.map((elem) => {elem.join(', ');}).join(' && ')}
+                {constraintResults?.adqlConstraintErrors?.map((elem) => {elem.join(', ');})}
+                <br/>
+                sia ?: <br/>
+                {constraintResults?.siaConstraints?.join('&')}
+                <br/>
+                sia errors: <br/>
+                {constraintResults?.siaConstraintErrors?.map((elem) => {elem.join(', ');})}
                 <br/>
             </div>}
         </FieldGroup>
@@ -240,7 +236,7 @@ const FunctionalTableSearchMethods = (props) => {
 
 export const TableSearchMethods = FunctionalTableSearchMethods;
 
-function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCoreEnabled, useAdqlReducer, useSiaReducer, useFieldGroupReducer}) {
+function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCoreEnabled, useConstraintReducer, useFieldGroupReducer}) {
     const panelTitle = Spatial;
     const {POSITION:worldPt, radiusInArcSec}= initArgs;
     const [spatialMethod, setSpatialMethod] = useState(TapSpatialSearchMethod.Cone.value);
@@ -296,9 +292,6 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
     };
 
     const constraintReducer = function(fields, newFields) {
-        const fieldsValidity = new Map();
-        const panelActive = isPanelChecked(panelTitle, fields);
-
         const siaConstraints = [];
         const siaConstraintErrors = new Map();
         let adqlConstraint = '';
@@ -313,7 +306,7 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
                     adqlConstraintErrors.push(`Unknown error processing ${panelTitle} constraints`);
                 }
                 if  (constraintsResult.siaConstraints?.length > 0){
-                    siaConstraints.concat(constraintsResult.siaConstraints);
+                    siaConstraints.push(...constraintsResult.siaConstraints);
                 }
             } else if (!constraintsResult.adqlConstraint) {
                 console.log(`invalid ${panelTitle} adql constraints`);  // FIXME: remove before merge
@@ -327,19 +320,8 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
         };
     };
 
-    const adqlReducer = (fields, newFields) => {
-        const {adqlConstraint, adqlConstraintErrors} = constraintReducer(fields, newFields);
-        return {adqlConstraint, adqlConstraintErrors};
-    };
-
-    const siaReducer = (fields, newFields) => {
-        const {siaConstraint, siaConstraintErrors} = constraintReducer(fields, newFields);
-        return {siaConstraint, siaConstraintErrors};
-    };
-
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
-    const adqlResult = useAdqlReducer('spatial', adqlReducer, [obsCoreEnabled]);
-    const siaResult = useSiaReducer('spatial', siaReducer);
+    const constraintResult = useConstraintReducer('spatial', constraintReducer, [obsCoreEnabled]);
 
     useFieldGroupReducer('spatial', onChange);
 
@@ -431,8 +413,8 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
                 {obsCoreEnabled && doObsCoreSearch()}
             </div>
             {DEBUG_OBSCORE && <div>
-                adql fragment: <br/> {adqlResult?.adqlConstraint} <br/>
-                sia fragment: {siaResult?.siaConstraintErrors?.length ? `Error: ${siaResult.siaConstraintErrors.join(' ')}` : siaResult?.siaConstraint}
+                adql fragment: {constraintResult?.adqlConstraint} <br/>
+                sia fragment: {constraintResult?.siaConstraintErrors?.length ? `Error: ${constraintResult.siaConstraintErrors.join(' ')}` : constraintResult?.siaConstraints}
             </div>}
         </FieldGroupCollapsible>
     );
@@ -449,7 +431,8 @@ SpatialSearch.propTypes = {
 /**
  * Temporal Search is not relevant to SIA/ObsCore, so we don't do SIA reduction.
  */
-function TemporalSearch({cols, columnsModel, groupKey, fields, useAdqlReducer, useSiaReducer, useFieldGroupReducer}) {
+function TemporalSearch({cols, columnsModel, groupKey, fields, useConstraintReducer, useFieldGroupReducer}) {
+    const panelTitle = Temporal;
     const showTemporalColumns = () => {
         return (
             <div style={{marginLeft: LeftInSearch}}>
@@ -543,45 +526,39 @@ function TemporalSearch({cols, columnsModel, groupKey, fields, useAdqlReducer, u
     useFieldGroupReducer('temporal', onChange);
 
     const constraintReducer = function(fields, newFields) {
-        const adqlConstraints = [];
+        let adqlConstraint = '';
         const adqlConstraintErrors = [];
 
         const siaConstraints = [];
         const siaConstraintErrors = [];
-
         // Process constraints because we also do validation
-        const temporalConstraints = makeTemporalConstraints(fields, columnsModel, newFields);
-        if (isPanelChecked(Temporal, fields)) {
-            if (!temporalConstraints.valid){
-                console.log('invalid spatial constraints');
-            }
-            if (!temporalConstraints.where) {
-                adqlConstraintErrors.push('Unknown error processing spatial constraints');
-            } else {
-                adqlConstraints.push(temporalConstraints.where);
+        const constraintsResult = makeTemporalConstraints(fields, columnsModel, newFields);
+        updatePanelFields(constraintsResult.fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle);
+        if (isPanelChecked(panelTitle, newFields)) {
+            if (constraintsResult.valid){
+                if (constraintsResult.adqlConstraint?.length > 0){
+                    adqlConstraint = constraintsResult.adqlConstraint;
+                } else {
+                    adqlConstraintErrors.push(`Unknown error processing ${panelTitle} constraints`);
+                }
+                if  (constraintsResult.siaConstraints?.length > 0){
+                    siaConstraints.push(...constraintsResult.siaConstraints);
+                }
+            } else if (!constraintsResult.adqlConstraint) {
+                console.log(`invalid ${panelTitle} adql constraints`);  // FIXME: remove before merge
             }
         }
         return {
-            adqlConstraint: adqlConstraints.join(' AND '),
-            adqlConstraintErrors: undefined,
-            siaConstraint: siaConstraints.join('&'),
-            siaConstraintErrors: siaConstraintErrors
+            adqlConstraint,
+            adqlConstraintErrors,
+            siaConstraints,
+            siaConstraintErrors
         };
     };
 
-    const adqlReducer = (fields, newFields) => {
-        const {adqlConstraint, adqlConstraintErrors} = constraintReducer(fields, newFields);
-        return {adqlConstraint, adqlConstraintErrors};
-    };
-
-    const siaReducer = (fields, newFields) => {
-        const {siaConstraint, siaConstraintErrors} = constraintReducer(fields, newFields);
-        return {siaConstraint, siaConstraintErrors};
-    };
 
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
-    const adqlResult = useAdqlReducer('temporal', adqlReducer);
-    const siaResult = useSiaReducer('temporal', siaReducer);
+    const constraintResult = useConstraintReducer('temporal', constraintReducer);
 
     const message = get(fields, [TemporalCheck, 'value']) === Temporal ?get(fields, [TemporalPanel, PanelMessage], '') :'';
     return (
@@ -596,8 +573,8 @@ function TemporalSearch({cols, columnsModel, groupKey, fields, useAdqlReducer, u
                     {showTimeRange()}
                 </div>
             {DEBUG_OBSCORE && <div>
-                adql fragment: <br/> {adqlResult?.adqlConstraint} <br/>
-                sia fragment: {siaResult?.siaConstraintErrors?.length ? `Error: ${siaResult.siaConstraintErrors.join(' ')}` : siaResult?.siaConstraint}
+                adql fragment: {constraintResult?.adqlConstraint} <br/>
+                sia fragment: {constraintResult?.siaConstraintErrors?.length ? `Error: ${constraintResult.siaConstraintErrors.join(' ')}` : constraintResult?.siaConstraints}
             </div>}
         </FieldGroupCollapsible>
     );
@@ -609,13 +586,6 @@ TemporalSearch.propTypes = {
     fields: PropTypes.object,
     obsCoreEnabled: PropTypes.bool
 };
-
-
-// WavelengthSearch.propTypes = {
-//     cols: ColsShape,
-//     groupKey: PropTypes.string,
-//     fields: PropTypes.object
-// };
 
 
 function selectSpatialSearchMethod(groupKey, fields, spatialMethod) {
@@ -734,8 +704,6 @@ radiusInField.propTypes = {
     radiusInArcSec: PropTypes.number
 };
 
-const defaultSpatialConstraints =  {valid: true, where: '', title: 'spatial search error'};
-const defaultTemporalConstraints =  {valid: true, where: '', title: 'temporal search error'};
 
 function makeSpatialConstraints(fields, columnsModel, newFields) {
     const opFields = newFields || fields;
@@ -898,11 +866,9 @@ function makeSpatialConstraints(fields, columnsModel, newFields) {
 
 function makeTemporalConstraints(fields, columnsModel, newFields) {
     const opFields = newFields || fields;
-    const panelActive = isPanelChecked(Temporal, opFields);
-    const nullAllowed = !isPanelChecked(Temporal, opFields); // FIXME: Hack
     const fieldsValidity = new Map();
 
-    const checkField = (key, fieldsValidity) => {
+    const checkField = (key, fieldsValidity, nullAllowed) => {
         const retval = getFieldValidity(opFields, key, nullAllowed);
         const field = get(opFields, key);
         const validity =  {valid: retval.valid, message: retval.message};
@@ -916,11 +882,11 @@ function makeTemporalConstraints(fields, columnsModel, newFields) {
         return validity;
     };
 
-    const retval = clone(defaultTemporalConstraints);
-    let where = '';
-    const columnsValidity = checkField(TemporalColumns, fieldsValidity);
-    const fromValidity = checkField(TimeFrom, fieldsValidity);
-    const toValidity = checkField(TimeTo, fieldsValidity);
+    let adqlConstraint = '';
+    const columnsValidity = checkField(TemporalColumns, fieldsValidity, false);
+    const fromValidity = checkField(TimeFrom, fieldsValidity, true);
+    const toValidity = checkField(TimeTo, fieldsValidity, true);
+
     if (columnsValidity.valid && fromValidity.valid && toValidity.valid){
         const timeColumns = get(opFields, [TemporalColumns, 'value'], '').trim().split(',').reduce((p, c) => {
             if (c.trim()) p.push(c.trim());
@@ -961,26 +927,18 @@ function makeTemporalConstraints(fields, columnsModel, newFields) {
             });
 
             if (!timeConstraints[FROM] || !timeConstraints[TO]) {
-                where = timeConstraints[FROM] + timeConstraints[TO];
+                adqlConstraint = timeConstraints[FROM] + timeConstraints[TO];
             } else {
-                where =`(${timeConstraints[FROM]} AND ${timeConstraints[TO]})`;
+                adqlConstraint =`(${timeConstraints[FROM]} AND ${timeConstraints[TO]})`;
             }
         }
     }
     const allValid = Array.from(fieldsValidity.values()).every((validity) => {return validity.valid;});
-    if (newFields) {
-        for (const [key, validity] of fieldsValidity.entries()) {
-            Object.assign(newFields[key], validity);
-            if (has(newFields[key], 'nullAllowed')) {
-                newFields[key].nullAllowed = nullAllowed;
-                newFields[key].valid = panelActive ? validity.valid : true;
-            }
-        }
-        Object.assign(newFields[TemporalPanel], {[PanelValid]: retval.valid, [PanelMessage]: retval.message});
-    }
-    retval.valid = allValid;
-    retval.where = where;
-    return retval;
+    return {
+        valid: allValid,
+        fieldsValidity,
+        adqlConstraint,
+    };
 }
 
 /**
@@ -991,14 +949,14 @@ function makeTemporalConstraints(fields, columnsModel, newFields) {
 export function tableSearchMethodsConstraints(columnsModel) {
     // construct ADQL string here
     const fields = FieldGroupUtils.getGroupFields(skey);
-    const {adqlResults} = fields;
-    if (adqlResults){
-        return {valid: true, where: adqlResults.adqlConstraints.join(' AND ')};
+    const {constraintResults} = fields;
+    if (constraintResults){
+        return {valid: true, where: constraintResults.adqlConstraints.join(' AND ')};
     }
     return {valid: true};
 }
 
-function buildTapSearchMethodReducer(columnsModel, setAdqlResults) {
+function buildTapSearchMethodReducer(columnsModel) {
     return (inFields, action) => {
 
         if (!inFields)  {
@@ -1018,7 +976,7 @@ function buildTapSearchMethodReducer(columnsModel, setAdqlResults) {
                 Object.assign(rFields[TemporalColumns],
                                         {validator: getColValidator(cols, false, false), value: '', valid: true});
 
-                validateTemporalConstraints(inFields, rFields);
+                // validateTemporalConstraints(inFields, rFields);
             };
 
 
@@ -1031,29 +989,32 @@ function buildTapSearchMethodReducer(columnsModel, setAdqlResults) {
                     const adqlConstraints = [];
                     const adqlConstraintErrorsArray = [];
                     const siaConstraints = [];
+                    const siaConstraintErrorsArray = [];
                     // adqlComponents can apparently be modified during iteration in the forEach...
-                    Array.from(constraintReducers.adqlReducerMap.values()).forEach((adqlReducer) => {
-                        const {adqlConstraint, adqlConstraintErrors} = adqlReducer(inFields, rFields);
-                        if (!adqlConstraintErrors?.length) {
-                            if (adqlConstraint) {
-                                adqlConstraints.push(adqlConstraint);
+                    Array.from(constraintReducers.adqlReducerMap.values()).forEach((constraintReducer) => {
+                        const constraintResult = constraintReducer(inFields, rFields);
+                        if (!constraintResult.adqlConstraintErrors?.length) {
+                            if (constraintResult.adqlConstraint) {
+                                adqlConstraints.push(constraintResult.adqlConstraint);
                             }
                         } else {
-                            adqlConstraintErrorsArray.push(adqlConstraintErrors);
+                            adqlConstraintErrorsArray.push(constraintResult.adqlConstraintErrors);
                         }
-                    });
-                    Array.from(constraintReducers.siaReducerMap.values()).forEach((siaReducer) => {
-                        const {siaConstraint, siaConstraintErrors} = siaReducer(inFields);
-                        if (!siaConstraintErrors?.length) {
-                            if (siaConstraint) {
-                                siaConstraints.push(siaConstraint);
+                        if (!constraintResult.siaConstraintErrors?.length) {
+                            if (constraintResult.siaConstraints?.length > 0) {
+                                siaConstraints.push(...constraintResult.siaConstraints);
                             }
                         } else {
-                            console.log(siaConstraintErrors);
+                            siaConstraintErrorsArray.push(constraintResult.siaConstraintErrors);
                         }
                     });
-                    const adqlResults = {adqlConstraints, adqlConstraintErrors: adqlConstraintErrorsArray};
-                    rFields[AdqlResults] = adqlResults;
+                    const constraintResults = {
+                        adqlConstraints,
+                        adqlConstraintErrors: adqlConstraintErrorsArray,
+                        siaConstraints,
+                        siaConstraintErrors: siaConstraintErrorsArray
+                    };
+                    rFields[ConstraintResults] = constraintResults;
                     break;
                 case FieldGroupCntlr.MOUNT_FIELD_GROUP:
                     if (columnsModel.tbl_id !== get(inFields, [CrtColumnsModel, 'value'])) {
@@ -1125,97 +1086,6 @@ const updateMessage = (retval, panel, key) => {
     }
     return retval;
 };
-
-
-
-/**
- * validate all fields in temporal search panel
- * if newFields is not defined, return true/false valid depending if any entry with invalid value exists.
- * if newFields is defined, the validity of the relevant field is recalculated and updated depending on if
- * temporal search panel is checked or not
- * @param fields
- * @param newFields
- * @param nullAllowed
- * @returns {{valid: boolean}}
- */
-function validateTemporalConstraints(fields, newFields, nullAllowed) {
-    const allowEmptyFields = [TimeFrom, TimeTo, MJDFrom, MJDTo, TimePickerFrom, TimePickerTo];
-
-    let allValid = true;
-    if (isUndefined(nullAllowed) && newFields) {
-        nullAllowed = !isPanelChecked(Temporal, newFields);
-    }
-
-    const checkField = (key) => {
-        let retval;
-
-        if (isUndefined(nullAllowed)) {
-            retval = getFieldValidity(newFields || fields, key);
-        } else {
-            retval = getFieldValidity(newFields || fields, key,
-                                      allowEmptyFields.includes(key) ? true : nullAllowed);
-        }
-        if (newFields) {
-            Object.assign(newFields[key], {valid: retval.valid, message: retval.message});
-
-            if (has(newFields[key], 'nullAllowed')) {
-                newFields[key].nullAllowed = nullAllowed;
-            }
-
-            allValid = allValid&&retval.valid;
-        }
-        return retval;
-    };
-
-
-    let retval;
-    const updateRetMessage = (key) => {
-        return updateMessage(retval, Temporal, key);
-    };
-
-    retval = checkField(TemporalColumns);
-    if (!newFields && !retval.valid) {
-        return updateRetMessage(TemporalColumns);
-    }
-
-    retval = checkField(TimeFrom);
-    if (!newFields && !retval.valid) {
-        return updateRetMessage(TimeFrom);
-    }
-
-    retval = checkField(TimeTo);
-    if (!newFields && !retval.valid) {
-        return updateRetMessage(TimeTo);
-    }
-
-    // mark field invalid if either ISO or MJD is invalid
-    // let mjdRet = checkField(MJDFrom);
-    // let isoRet = checkField(TimePickerFrom);
-    //
-    // if (!newFields && (!mjdRet.valid || !isoRet.valid)) {
-    //     retval.valid = false;
-    //     retval.message = !isoRet.valid ? isoRet.message : mjdRet.message;
-    //     return updateRetMessage(!isoRet.valid ? TimePickerFrom : MJDFrom);
-    // }
-    //
-    // mjdRet = checkField(MJDTo);
-    // isoRet = checkField(TimePickerTo);
-    //
-    // if (!newFields && (!mjdRet.valid || !isoRet.valid)) {
-    //     retval.valid = false;
-    //     retval.message = !isoRet.valid ? isoRet.message : mjdRet.message;
-    //     return updateRetMessage(!!isoRet.valid  ? TimePickerTo : MJDTo);
-    // }
-
-    if (newFields) {
-        retval = {valid: allValid, message: allValid ? '' : SomeFieldInvalid};
-        Object.assign(newFields[TemporalPanel], {[PanelValid]: retval.valid, [PanelMessage]: retval.message} );
-
-        return retval;
-    } else {
-        return {valid: true};
-    }
-}
 
 function fieldInit(columnsTable) {
     return (
