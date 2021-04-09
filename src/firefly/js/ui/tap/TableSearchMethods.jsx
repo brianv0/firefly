@@ -110,7 +110,7 @@ const TapSpatialSearchMethod = new Enum({
 });
 
 // size used
-export const SpattialPanelWidth = Math.max(Width_Time_Wrapper*2, SpatialWidth) + LabelWidth + 10; /* FIXME: Spattial spelling */
+export const SpatialPanelWidth = Math.max(Width_Time_Wrapper*2, SpatialWidth) + LabelWidth + 10;
 
 function isFieldInPanel(fieldKey) {
     return Object.keys(fieldsMap).find((panel) => {
@@ -480,7 +480,7 @@ function TemporalSearch({cols, columnsModel, groupKey, fields, useAdqlReducer, u
 
         //  radio field is styled with padding right in consistent with the label part of 'temporal columns' entry
         return (
-            <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5, width: SpattialPanelWidth}}>
+            <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5, width: SpatialPanelWidth}}>
                 <RadioGroupInputField fieldKey={TimeOptions}
                                       options={timeOptions}
                                       alignment={'horizontal'}
