@@ -39,7 +39,7 @@ import {
     onChangeTimeMode,
     onChangeDateTimePicker,
     updatePanelFields,
-    isPanelChecked
+    isPanelChecked, getPanelPrefix
 } from 'firefly/ui/tap/TableSearchHelpers';
 // import '../CatalogSearchMethodType.css';
 // import './react-datetime.css';
@@ -433,6 +433,16 @@ SpatialSearch.propTypes = {
  */
 function TemporalSearch({cols, columnsModel, groupKey, fields, useConstraintReducer, useFieldGroupReducer}) {
     const panelTitle = Temporal;
+    const panelPrefix = getPanelPrefix(panelTitle);
+    const [message, setMesage] = useState();
+
+    useEffect(() => {
+        return FieldGroupUtils.bindToStore(groupKey, (fields) => {
+            const panelActive = getFieldVal(groupKey, `${panelPrefix}Check`) === panelTitle;
+            setMesage(panelActive ? get(fields, [`${panelPrefix}SearchPanel`, PanelMessage], '') : '');
+        });
+    }, []);
+
     const showTemporalColumns = () => {
         return (
             <div style={{marginLeft: LeftInSearch}}>
@@ -560,12 +570,11 @@ function TemporalSearch({cols, columnsModel, groupKey, fields, useConstraintRedu
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
     const constraintResult = useConstraintReducer('temporal', constraintReducer);
 
-    const message = get(fields, [TemporalCheck, 'value']) === Temporal ?get(fields, [TemporalPanel, PanelMessage], '') :'';
     return (
-        <FieldGroupCollapsible header={<Header title={Temporal} helpID={tapHelpId('temporal')}
-                                        checkID={TemporalCheck} message={message}/>}
+        <FieldGroupCollapsible header={<Header title={panelTitle} helpID={tapHelpId(panelPrefix)}
+                                        checkID={`${panelPrefix}Check`} message={message}/>}
                                initialState={{ value: 'closed' }}
-                               fieldKey={TemporalPanel}
+                               fieldKey={`${panelPrefix}SearchPanel`}
                                wrapperStyle={{marginBottom: 15}}
                                headerStyle={HeaderFont}>
                 <div style={{marginTop: 5, height: 100}}>

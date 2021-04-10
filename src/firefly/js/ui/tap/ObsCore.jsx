@@ -22,7 +22,7 @@ import {
     onChangeTimeMode,
     getTimeInfo,
     checkField,
-    updatePanelFields, isPanelChecked
+    updatePanelFields, isPanelChecked, getPanelPrefix
 } from 'firefly/ui/tap/TableSearchHelpers';
 import {ColsShape} from '../../charts/ui/ColumnOrExpression';
 import {convertISOToMJD, validateDateTime, validateMJD} from 'firefly/ui/DateTimePickerField';
@@ -52,7 +52,16 @@ function timeValidator(fieldKey) {
 
 export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
     const panelTitle = 'ObsCore';
-    const panelPrefix = 'obsCore';
+    const panelPrefix = getPanelPrefix(panelTitle);
+
+    const [message, setMesage] = useState();
+
+    useEffect(() => {
+        return FieldGroupUtils.bindToStore(groupKey, (fields) => {
+            const panelActive = getFieldVal(groupKey, `${panelPrefix}Check`) === panelTitle;
+            setMesage(panelActive ? get(fields, [`${panelPrefix}SearchPanel`, 'panelMessage'], '') : '');
+        });
+    }, []);
 
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
 
@@ -90,10 +99,6 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
     };
 
     const hasSubType = true; // getColumn(cols, "dataproduct_subtype") || false;
-    const message = '';
-    // const message = get(fields, ['ObsCoreCheck', 'value']) === 'ObsCore' ?
-    //     get(fields, ['ObsCorePanel', 'PanelMessage'], '') :
-    //     ''; /* FIXME: ObsCoreCheck */
 
     const makeConstraints = function(fields, fieldsValidity) {
         const adqlConstraints = [];
@@ -263,32 +268,38 @@ ObsCoreSearch.propTypes = {
 
 
 export function ExposureDurationSearch({cols, groupKey, fields, useConstraintReducer, useFieldGroupReducer}) {
+    const panelTitle = 'Exposure';
+    const panelPrefix = getPanelPrefix(panelTitle);
+
     const [rangeType, setRangeType] = useState('range');
     const [expTimeMode, setExpTimeMode] = useState(ISO);
     const [expMin, setExpMin] = useState();
     const [expMax, setExpMax] = useState();
     const [expLength, setExpLength] = useState();
+    const [message, setMesage] = useState();
 
     useEffect(() => {
         return FieldGroupUtils.bindToStore(groupKey, (fields) => {
-            setRangeType(getFieldVal(groupKey, 'ExposureRangeType', rangeType));
+            setRangeType(getFieldVal(groupKey, 'exposureRangeType', rangeType));
             setExpTimeMode(getFieldVal(groupKey, 'exposureTimeMode', expTimeMode));
             setExpMin(getFieldVal(groupKey, 'exposureMin', expMin));
             setExpMax(getFieldVal(groupKey, 'exposureMax', expMax));
             setExpLength(getFieldVal(groupKey, 'exposureLength', expLength));
+            const panelActive = getFieldVal(groupKey, `${panelPrefix}Check`) === panelTitle;
+            setMesage(panelActive ? get(fields, [`${panelPrefix}SearchPanel`, 'panelMessage'], '') : '');
         });
     }, []);
 
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
 
     const constraintReducer = (fields) => {
-        const {ExposureCheck} = fields;
+        const {exposureCheck} = fields;
         const adqlConstraints = [];
         const siaConstraints = [];
         const siaConstraintErrors = [];
-        if (fields && ExposureCheck?.value === 'Exposure') {
-            const {ExposureRangeType} = fields;
-            if (ExposureRangeType?.value === 'range'){
+        if (fields && exposureCheck?.value === 'Exposure') {
+            const {exposureRangeType} = fields;
+            if (exposureRangeType?.value === 'range'){
                 const {exposureMin, exposureMax} = fields;
                 if (exposureMin?.valid && exposureMax?.valid) {
                     // We don't care what exposureTimeMode is - we just care about getting the time from the components
@@ -300,7 +311,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                     adqlConstraints.push(adqlQueryRange('t_min', 't_max', rangeList, false));
                     siaConstraints.push(...siaQueryRange('TIME', rangeList));
                 }
-            } else if (ExposureRangeType?.value === 'since') {
+            } else if (exposureRangeType?.value === 'since') {
                 const {exposureSinceValue, exposureSinceOptions} = fields;
                 if (exposureSinceValue?.value){
                     let sinceMillis;
@@ -351,7 +362,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
         return (
             <div style={{display: 'block', marginTop: '5px'}}>
                 <RadioGroupInputField
-                    fieldKey={'ExposureRangeType'}
+                    fieldKey={'exposureRangeType'}
                     options={exposureRangeOptions}
                     alignment={'horizontal'}
                 />
@@ -439,16 +450,14 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
 
     const constraintResult = useConstraintReducer('exposure', constraintReducer);
 
-    /* FIXME: exposure check */
-    // const message = get(fields, [TemporalCheck, 'value']) === Temporal ?get(fields, [TemporalPanel, PanelMessage], '') :''; /* FIXME: exposure check */
     return (
         <FieldGroupCollapsible
-            header={<Header title={'Exposure'} helpID={tapHelpId('exposureDuration')}
-                            checkID={'ExposureCheck'}
-                //message={message}
+            header={<Header title={panelTitle} helpID={tapHelpId(`${panelPrefix}`)}
+                            checkID={`${panelPrefix}Check`}
+                message={message}
             />}
             initialState={{value: 'closed'}}
-            fieldKey={'exposureDurationPanel'}
+            fieldKey={`${panelPrefix}SearchPanel`}
             wrapperStyle={{marginBottom: 15}}
             headerStyle={HeaderFont}>
             <div style={{marginTop: 5}}>
@@ -520,8 +529,11 @@ function siaQueryRange(keyword, rangeList) {
 }
 
 export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintReducer, useFieldGroupReducer}) {
+    const panelTitle = 'Wavelength';
+    const panelPrefix = getPanelPrefix(panelTitle);
     const [selectionType, setSelectionType] = useState('filter');
     const [rangeType, setRangeType] = useState('contains');
+    const [message, setMesage] = useState();
 
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
 
@@ -534,6 +546,8 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
         return FieldGroupUtils.bindToStore(groupKey, (fields) => {
             setSelectionType(getFieldVal(groupKey, 'obsCoreWavelengthSelectionType', selectionType));
             setRangeType(getFieldVal(groupKey, 'obsCoreWavelengthRangeType', rangeType));
+            const panelActive = getFieldVal(groupKey, `${panelPrefix}Check`) === panelTitle;
+            setMesage(panelActive ? get(fields, [`${panelPrefix}SearchPanel`, 'panelMessage'], '') : '');
         });
     }, []);
 
@@ -624,10 +638,11 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
     const constraintResult = useConstraintReducer('wavelength', constraintReducer);
 
     return (
-        <FieldGroupCollapsible header={<Header title={'Wavelength'} helpID={tapHelpId('wavelength')}
-                                               checkID={'WavelengthCheck'}/>}
+        <FieldGroupCollapsible header={<Header title={panelTitle} helpID={tapHelpId(panelPrefix)}
+                                               checkID={`${panelPrefix}Check`}
+                                               message={message}/>}
                                initialState={{ value: 'closed' }}
-                               fieldKey={'wavelengthPanel'}
+                               fieldKey={`${panelPrefix}SearchPanel`}
                                headerStyle={HeaderFont}>
             <div style={{display: 'flex', flexDirection: 'column', width: SpatialWidth, justifyContent: 'flex-start'}} >
                 <RadioGroupInputField
