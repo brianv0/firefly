@@ -4,12 +4,12 @@
 import validator from 'validator';
 import {isNil} from 'lodash';
 
-var isInRange= function(val,min,max) {
-    var retval= !(min !== undefined && min!==null && val<min);
+const isInRange= function(val,min,max) {
+    const retval= !(min !== undefined && min!==null && val<min);
     return retval && !(max !== undefined && max!==null && val>max);
 };
 
-var typeInject= {
+const typeInject= {
     asInt : {
         dataTypeDesc : 'integer',
         testFunc : validator.isInt,
@@ -24,19 +24,19 @@ var typeInject= {
 
 
 
-var makePrecisionStr= function(value,precision) {
+const makePrecisionStr= function(value,precision) {
     if (!isNil(value)) {
         return (precision>-1) ? value.toFixed(precision) : value;
     }
     else return '';
 };
 
-var makeErrorMessage= function(description,min,max,precision) {
-    var retval= '';
-    var hasMin= (min !== undefined && min!==null);
-    var hasMax= (min !== undefined && min!==null);
-    var minStr= makePrecisionStr(min,precision);
-    var maxStr= makePrecisionStr(max,precision);
+const makeErrorMessage= function(description,min,max,precision) {
+    let retval= '';
+    const hasMin= (min !== undefined && min!==null);
+    const hasMax= (min !== undefined && min!==null);
+    const minStr= makePrecisionStr(min,precision);
+    const maxStr= makePrecisionStr(max,precision);
     description= description || '';
     if (hasMin && hasMax) {
         retval= description + ': must be between ' + minStr + ' and ' + maxStr;
@@ -50,8 +50,8 @@ var makeErrorMessage= function(description,min,max,precision) {
     return retval;
 };
 
-var validateRange = function(min,max,precision,description,dType, valStr, nullAllowed) {
-    var retval= {
+const validateRange = function(min,max,precision,description,dType, valStr, nullAllowed) {
+    const retval= {
         valid : true,
         message : ''
     };
@@ -76,7 +76,7 @@ var validateRange = function(min,max,precision,description,dType, valStr, nullAl
     return retval;
 };
 
-export function NotBlank(val='') {
+export const NotBlank = (val='') => {
     const retval = {valid: true,message: ''};
     if (!val.trim()) {
         retval.valid = false;
@@ -86,7 +86,7 @@ export function NotBlank(val='') {
 };
 
 export const validateEmail = function(description,valStr) {
-    var retval = {
+    const retval = {
         valid: true,
         message: ''
     };
@@ -98,15 +98,15 @@ export const validateEmail = function(description,valStr) {
 };
 
 export const validateDate = function(description, valStr){
-    let retval ={
+    const retval ={
         valid: true,
         message: ''
     };
     if(valStr){
         try {
-            let dateObj = new Date(valStr);
+            const dateObj = new Date(valStr);
             //Extracting the "date" string from the date object, in yyyy-mm-dd format.
-            let parsedDate = dateObj.toISOString().substr(0, dateObj.toISOString().indexOf('T'));
+            const parsedDate = dateObj.toISOString().substr(0, dateObj.toISOString().indexOf('T'));
             if(parsedDate !== valStr){
                 retval.valid = false;
                 retval.message = description + ': must be a valid date formatted as yyyy-mm-dd';
@@ -121,7 +121,7 @@ export const validateDate = function(description, valStr){
 };
 
 export const validateUrl = function(description,valStr) {
-    var retval = {
+    const retval = {
         valid: true,
         message: ''
     };
@@ -141,7 +141,7 @@ export const floatRange = function(min,max,precision, description, valStr, nullA
 };
 
 export const isFloat = function(description, valStr) {
-    var retval= { valid : true, message : '' };
+    const retval= { valid : true, message : '' };
     if (valStr) {
         if (!validator.isFloat(valStr+'')) {
             retval.valid = false;
@@ -152,9 +152,9 @@ export const isFloat = function(description, valStr) {
 };
 
 export const isPositiveFiniteNumber = (description, valStr)=>{
-    var retval= { valid : true, message : '' };
+    const retval= { valid : true, message : '' };
     if (valStr) {
-        var aNumber = Number.parseFloat(valStr);
+        const aNumber = Number.parseFloat(valStr);
         if (!isFinite(aNumber)) {
             retval.valid = false;
             retval.message = description + ': must be a finite float';
@@ -178,12 +178,12 @@ export const isPositiveFiniteNumber = (description, valStr)=>{
  */
 const isFloatOrInfiniteNumber = (description, valStr, allowedInfinityValue)=> {
     const allowedSign = allowedInfinityValue === Infinity ? '+' : '-';
-    var retval = {valid: true, message: ''};
+    const retval = {valid: true, message: ''};
     if (valStr) {
         if (valStr.endsWith('Inf')) {
             valStr = valStr.replaceAll('Inf', 'Infinity');
         }
-        var aNumber = Number(valStr);
+        const aNumber = Number(valStr);
         if (isNaN(aNumber) || (aNumber < 0 && aNumber !== allowedInfinityValue)) {
             retval.valid = false;
             retval.message = description + `: must be a positive float or ${allowedSign}Inf`;
@@ -193,7 +193,7 @@ const isFloatOrInfiniteNumber = (description, valStr, allowedInfinityValue)=> {
 };
 
 export const isInt = function(description, valStr) {
-    var retval= { valid : true, message : '' };
+    const retval= { valid : true, message : '' };
     if (valStr) {
         if (!validator.isInt(valStr+'')) {
             retval.valid = false;
@@ -204,7 +204,7 @@ export const isInt = function(description, valStr) {
 };
 
 export const isHexColorStr = function(description, valStr) {
-    var retval= { valid : true, message : '' };
+    const retval= { valid : true, message : '' };
     if (valStr && !/^#[0-9a-f]{6}/.test(valStr)) {
         retval.valid = false;
         retval.message = description + ': must be a hex color exactly 7 characters long';
@@ -247,7 +247,7 @@ export const minimumPositiveFloatValidator = function (description) {
 
 
 
-var Validate = {
+const Validate = {
     validateEmail, validateUrl, intRange, floatRange, isFloat, isInt,isPositiveFiniteNumber, validateDate
 };
 export default Validate;
