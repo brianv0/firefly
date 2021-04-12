@@ -272,7 +272,8 @@ SuggestBoxInputFieldView.propTypes = {
     inputStyle: PropTypes.object,
     valid: PropTypes.bool,
     message: PropTypes.string,
-    readonly: PropTypes.bool
+    readonly: PropTypes.bool,
+    validator: PropTypes.func,
 };
 
 
