@@ -129,7 +129,7 @@ export function BasicUI(props) {
         });
 
         loadObsCoreSchemaTables(requestServiceUrl).then((tableModel) => {
-            const obsCoreTablesResponse = tableModel.tableData.data || undefined;
+            const obsCoreTablesResponse = tableModel?.tableData.data || undefined;
             setObsCoreTables(obsCoreTablesResponse);
             // Update state early for ObsCore support
             // we'll still have to wait for loadTables and loadColumns
@@ -181,7 +181,7 @@ export function BasicUI(props) {
             setColumnsModel(columnsModel);
             // May be redundant in a way - we know obsCoreTables should already be set,
             // and we should be able to just check the names, but this is a bit more robust (probably?)
-            var matchesObsCore = matchesObsCoreHeuristic(schemaName, tableName, columnsModel);
+            const matchesObsCore = matchesObsCoreHeuristic(schemaName, tableName, columnsModel);
             setObsCoreEnabled(matchesObsCore);
             setTapBrowserState({serviceUrl: requestServiceUrl, schemaName: requestSchemaName, schemaOptions: schemaOptions,
                 tableName: requestTableName, tableOptions: tableOptions, columnsModel: columnsModel, obsCoreEnabled: matchesObsCore, obsCoreTables: obsCoreTables});

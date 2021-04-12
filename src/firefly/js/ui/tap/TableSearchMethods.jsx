@@ -1,6 +1,6 @@
-import React,  {PureComponent, useState, useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
-import {get, set, isUndefined, has} from 'lodash';
+import {get, has, isUndefined, set} from 'lodash';
 import Enum from 'enum';
 import FieldGroupUtils, {getFieldVal} from '../../fieldGroup/FieldGroupUtils.js';
 import {ListBoxInputField} from '../ListBoxInputField.jsx';
@@ -13,37 +13,36 @@ import {ServerParams} from '../../data/ServerParams.js';
 import {getColumnIdx} from '../../tables/TableUtil.js';
 import {makeWorldPt, parseWorldPt} from '../../visualize/Point.js';
 import {convert} from '../../visualize/VisUtil.js';
-import {primePlot, getActivePlotView} from '../../visualize/PlotViewUtil.js';
+import {getActivePlotView, primePlot} from '../../visualize/PlotViewUtil.js';
 import {PlotAttribute} from '../../visualize/PlotAttribute.js';
 import {visRoot} from '../../visualize/ImagePlotCntlr.js';
-import {renderPolygonDataArea,  calcCornerString} from '../CatalogSearchMethodType.jsx';
+import {calcCornerString, renderPolygonDataArea} from '../CatalogSearchMethodType.jsx';
 import {clone} from '../../util/WebUtil.js';
 import {FieldGroupCollapsible} from '../panel/CollapsiblePanel.jsx';
 import {RadioGroupInputField} from '../RadioGroupInputField.jsx';
-import {validateMJD, validateDateTime, convertMJDToISO} from '../DateTimePickerField.jsx';
+import {convertMJDToISO, validateDateTime, validateMJD} from '../DateTimePickerField.jsx';
 import {TimePanel} from '../TimePanel.jsx';
-import {getColumnAttribute, tapHelpId, HeaderFont, MJD, ISO} from './TapUtil.js';
+import {getColumnAttribute, HeaderFont, ISO, MJD, tapHelpId} from './TapUtil.js';
 import {ColsShape, ColumnFld, getColValidator} from '../../charts/ui/ColumnOrExpression';
 import {
     changeDatePickerOpenStatus,
-    Header,
     FROM,
-    TO,
-    LeftInSearch,
+    getPanelPrefix,
+    Header,
+    isPanelChecked,
     LabelWidth,
     LableSaptail,
-    SpatialWidth,
-    Width_Column,
-    Width_Time_Wrapper,
+    LeftInSearch,
+    onChangeDateTimePicker,
     onChangeTimeField,
     onChangeTimeMode,
-    onChangeDateTimePicker,
+    SpatialWidth,
+    TO,
     updatePanelFields,
-    isPanelChecked, getPanelPrefix
+    Width_Column,
+    Width_Time_Wrapper
 } from 'firefly/ui/tap/TableSearchHelpers';
-// import '../CatalogSearchMethodType.css';
-// import './react-datetime.css';
-import {ObsCoreSearch, ExposureDurationSearch, ObsCoreWavelengthSearch} from 'firefly/ui/tap/ObsCore';
+import {ExposureDurationSearch, ObsCoreSearch, ObsCoreWavelengthSearch} from 'firefly/ui/tap/ObsCore';
 import {getAppOptions} from 'firefly/api/ApiUtil';
 import CoordinateSys from 'firefly/visualize/CoordSys';
 

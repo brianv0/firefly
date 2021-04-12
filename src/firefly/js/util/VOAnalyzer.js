@@ -88,7 +88,7 @@ const OBSTAP_MATCH_COLUMNS = [
     'calib_level',
     'dataproduct_type',
     'obs_collection',
-]
+];
 
 function getObsTabColEntry(title) {
     const e= OBSTAPCOLUMNS.find( (entry) => entry[ColNameIdx]===title);

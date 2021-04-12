@@ -53,7 +53,7 @@ const showTimePicker = (loc, show, timeKey) => {
 };
 
 export const changeDatePickerOpenStatusNew = (loc, timeKey, currentValue, currentTimeMode, setTimeCallback) => {
-    const currentTimeInfo = getTimeInfo(currentTimeMode, currentValue, true, '')
+    const currentTimeInfo = getTimeInfo(currentTimeMode, currentValue, true, '');
     const doSetTime = function(moment) {
         const timeInfo = getTimeInfo(ISO, fMoment(moment), true, '');
         setTimeCallback(timeInfo[currentTimeMode].value);
@@ -100,30 +100,31 @@ export const onChangeTimeMode = (newTimeMode, inFields, rFields, updateComponent
         const showHelp = isShowHelp(timeInfo[ISO].value, timeInfo[MJD].value);
         const feedback = formFeedback(timeInfo[ISO].value, timeInfo[MJD].value);
 
-        rFields[timeKey] = clone(inFields[timeKey], {
+        rFields[timeKey] = {
+            ...inFields[timeKey],
             value: newTimeInfo.value,
             valid: newTimeInfo.valid,
             message: newTimeInfo.message,
             showHelp, feedback,
             timeMode: newTimeMode
-        });
+        };
     });
 };
 
 export const onChangeTimeField = (value, inFields, rFields, timeKey, timeOptionsKey) => {
     // only update picker & mjd when there is no pop-up picker (time input -> picker or mjd)
     if (!isDialogVisible(POPUP_DIALOG_ID)) {
-        const {valid, message} = get(inFields, timeKey, {});
-        const currentTimeMode = get(inFields, [timeOptionsKey, 'value']);
+        const {valid, message} = inFields?.[timeKey] ?? {};
+        const currentTimeMode = inFields?.[timeOptionsKey]?.value;
         const timeInfo = getTimeInfo(currentTimeMode, value, valid, message);
         const showHelp = isShowHelp(timeInfo[ISO].value, timeInfo[MJD].value);
         const feedback = formFeedback(timeInfo[ISO].value, timeInfo[MJD].value);
-        rFields[timeKey] = clone(inFields[timeKey],
-            {
-                value: timeInfo[currentTimeMode].value, message, valid, showHelp, feedback,
-                [ISO]: timeInfo[ISO],
-                [MJD]: timeInfo[MJD]
-            });
+        rFields[timeKey] = {
+            ...inFields[timeKey],
+            value: timeInfo[currentTimeMode].value, message, valid, showHelp, feedback,
+            [ISO]: timeInfo[ISO],
+            [MJD]: timeInfo[MJD]
+        };
     }
 };
 
@@ -135,11 +136,12 @@ export const onChangeDateTimePicker = (value, inFields, rFields, timeKey, picker
         const timeInfo = getTimeInfo(ISO, value, valid, message);
         const showHelp = isShowHelp(timeInfo[ISO].value, timeInfo[MJD].value);
         const feedback = formFeedback(timeInfo[ISO].value, timeInfo[MJD].value);
-        rFields[timeKey] = clone(inFields[timeKey],{
+        rFields[timeKey] = {
+            ...inFields[timeKey],
             value: timeInfo[currentTimeMode].value, message, valid, showHelp, feedback, timeMode: currentTimeMode,
             [ISO]: timeInfo[ISO],
             [MJD]: timeInfo[MJD]
-        });
+        };
     }
 };
 

@@ -35,13 +35,7 @@ import toFloat from 'validator/es/lib/toFloat';
 import {dispatchValueChange} from 'firefly/fieldGroup/FieldGroupCntlr';
 
 
-
-const fakeValidator = (val) => {
-    return {
-        valid: true,
-        message: '',
-    };
-};
+const fakeValidator = () => ({valid: true, message: '' });
 
 function timeValidator(fieldKey) {
     return (val) => {
@@ -292,7 +286,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
 
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
 
-    const constraintReducer = (fields) => {
+    const constraintReducer = (fields, newFields) => {
         const {exposureCheck} = fields;
         const adqlConstraints = [];
         const siaConstraints = [];
