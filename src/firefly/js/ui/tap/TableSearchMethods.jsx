@@ -320,7 +320,7 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
     };
 
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
-    const constraintResult = useConstraintReducer('spatial', constraintReducer, [obsCoreEnabled]);
+    const constraintResult = useConstraintReducer('spatial', constraintReducer, [obsCoreEnabled, spatialRegionOperation]);
 
     useFieldGroupReducer('spatial', onChange);
 
@@ -762,9 +762,9 @@ function makeSpatialConstraints(fields, columnsModel, newFields) {
             if (pointResult.valid && size) {
                 userArea = `CIRCLE('${adqlCoordSys}', ${pointResult.x}, ${pointResult.y}, ${size})`;
             }
-        } else if (spatialMethod.value === TapSpatialSearchMethod.Polygon.value && polygoncoords?.value) {
-            let polygonValidity;
-            const splitPairs = polygoncoords.value ? polygoncoords.value.trim().split(',') : '';
+        } else if (spatialMethod.value === TapSpatialSearchMethod.Polygon.value) {
+            let polygonValidity = {valid: true, message: ''};
+            const splitPairs = polygoncoords?.value.trim().split(',') ?? [];
             const newCorners = splitPairs.reduce((p, onePoint) => {
                 const corner = onePoint.trim().split(' ');
                 if ((corner.length !== 2) || isNaN(Number(corner[0])) || isNaN(Number(corner[1]))) {
@@ -781,7 +781,7 @@ function makeSpatialConstraints(fields, columnsModel, newFields) {
             }, []);
 
             if (!newCorners || newCorners.length < 3 || newCorners.length > 15) {
-                if (newCorners && newCorners.length >= 1) {
+                if (newCorners?.length >= 1) {
                     polygonValidity = {valid: false, message: 'too few or too many corner specified'};
                 }
             }
@@ -793,11 +793,10 @@ function makeSpatialConstraints(fields, columnsModel, newFields) {
                 }
                 return p;
             }, '');
-            if (polygonValidity) {
-                fieldsValidity.set('polygoncoords', polygonValidity);
-            } else {
+            if (polygonValidity.valid) {
                 userArea = `POLYGON('${adqlCoordSys}', ${cornerStr})`;
             }
+            fieldsValidity.set('polygoncoords', polygonValidity);
         }
         retval.valid = Array.from(fieldsValidity.values()).every((v) => v.valid);
         retval.userArea = userArea;
