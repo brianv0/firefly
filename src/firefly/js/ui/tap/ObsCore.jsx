@@ -320,7 +320,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                         }
                     } else {
                         minValidity.valid = false;
-                        minValidity.message = 'empty field';
+                        minValidity.message = 'at least one field must be populated';
                     }
                 } else {
                     enoughMounted = false;
@@ -594,88 +594,141 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
 
     const filterDefinitions = get(getAppOptions(), ['obsCore', 'filterDefinitions'], []);
 
-    const constraintReducer = (fields) => {
-        const {WavelengthCheck} = fields;
+    const constraintReducer = (fields, newFields) => {
         const adqlConstraints = [];
+        const adqlConstraintErrors = [];
         const siaConstraints = [];
         const siaConstraintErrors = [];
-
+        const fieldsValidity = new Map();
         // The reducer was added when the component was mounted but not before all parts of the
         // But fields show up later if we change between filter/numerical.
         // We can use these two fields to verify the other parts are mounted.
-        const {obsCoreWavelengthSelectionType, obsCoreWavelengthUnits} = fields;
-
-        if (fields && WavelengthCheck?.value === 'Wavelength') {
+        const {obsCoreWavelengthSelectionType} = fields;
+        let enoughMounted = true;
+        if (fields) {
             // pull out the fields we care about
             if (obsCoreWavelengthSelectionType?.value === 'filter') {
                 const rangeList = [];
                 filterDefinitions.forEach((filterDefinition) => {
                     const fieldKey = 'filter' + filterDefinition.name;
                     const field = get(fields, fieldKey);
-                    if (field.value?.length) {
-                        const values = field.value.split(',');
-                        values.forEach((value) => {
-                            // field values are in nanometers, but service expects meters
-                            // We parse value as int, then
-                            const iValue = parseInt(value);
-                            const fValueString = `${iValue}e-9`;
-                            rangeList.push([fValueString, fValueString]);
-                        });
+                    if (field.mounted) {
+                        checkField(fieldKey, fields, true, fieldsValidity);
+                        if (field.value?.length) {
+                            // it's valid but we do this so we can get a field validity later
+                            const values = field.value.split(',');
+                            values.forEach((value) => {
+                                // field values are in nanometers, but service expects meters
+                                // We parse value as int, then
+                                const iValue = parseInt(value);
+                                const fValueString = `${iValue}e-9`;
+                                rangeList.push([fValueString, fValueString]);
+                            });
+                        }
+                    } else {
+                        enoughMounted = false;
                     }
                 });
-                if (rangeList.length) {
-                    adqlConstraints.push(adqlQueryRange('em_min', 'em_max', rangeList, true));
-                    siaConstraints.push(...siaQueryRange('BAND', rangeList));
-                }
-            }
-            else if (obsCoreWavelengthSelectionType?.value === 'numerical' && obsCoreWavelengthUnits?.value) {
-                const {obsCoreWavelengthContains, obsCoreWavelengthMinRange, obsCoreWavelengthMaxRange, obsCoreWavelengthUnits, obsCoreWavelengthRangeType,} = fields;
-                let exponent;
-                switch (obsCoreWavelengthUnits.value){
-                    case 'nm':
-                        exponent = 'e-9';
-                        break;
-                    case 'angstrom':
-                        exponent = 'e-10';
-                        break;
-                    case 'um':
-                        exponent = 'e-6';
-                        break;
-                }
-                if (obsCoreWavelengthRangeType?.value === 'contains' && obsCoreWavelengthContains?.value?.length) {
-                    const range = obsCoreWavelengthContains.value;
-                    if (!obsCoreWavelengthContains?.valid) {
-                        console.log('FIXME: Do something when not valid');
-                    }
-                    const rangeList = [[`${range}${exponent}`, `${range}${exponent}`]];
-                    adqlConstraints.push(adqlQueryRange('em_min', 'em_max', rangeList, true));
-                    siaConstraints.push(...siaQueryRange('BAND', rangeList));
-                }
-                if (obsCoreWavelengthRangeType?.value === 'overlaps') {
-                    if (!obsCoreWavelengthMinRange?.valid || !obsCoreWavelengthMaxRange?.valid ||
-                        !obsCoreWavelengthMinRange?.value || !obsCoreWavelengthMaxRange?.value) {
-                        console.log('FIXME: Do something when not valid');
-                    } else {
-                        const rawMin = obsCoreWavelengthMinRange.value === '-Inf';
-                        const rawMax = obsCoreWavelengthMaxRange.value === '+Inf';
-                        const lowerValue = rawMin ? obsCoreWavelengthMinRange.value : `${obsCoreWavelengthMinRange.value}${exponent}`;
-                        const upperValue = rawMax ? obsCoreWavelengthMaxRange.value : `${obsCoreWavelengthMaxRange.value}${exponent}`;
-                        const rangeList = [[lowerValue, upperValue]];
-                        adqlConstraints.push(adqlQueryRange('em_min', 'em_max', rangeList));
+                if (enoughMounted){
+                    if (rangeList.length) {
+                        adqlConstraints.push(adqlQueryRange('em_min', 'em_max', rangeList, true));
                         siaConstraints.push(...siaQueryRange('BAND', rangeList));
+                    } else {
+                        // Need at least one field to be non-empty
+                        [...fieldsValidity.values()][0].valid = false;
+                        [...fieldsValidity.values()][0].message = 'at least one filter must be checked';
                     }
+                }
+            } else if (obsCoreWavelengthSelectionType?.value === 'numerical') {
+                const {
+                    obsCoreWavelengthContains,
+                    obsCoreWavelengthMinRange,
+                    obsCoreWavelengthMaxRange,
+                    obsCoreWavelengthUnits,
+                    obsCoreWavelengthRangeType,
+                } = fields;
+                if (obsCoreWavelengthUnits?.mounted) {
+                    let exponent;
+                    switch (obsCoreWavelengthUnits.value) {
+                        case 'nm':
+                            exponent = 'e-9';
+                            break;
+                        case 'angstrom':
+                            exponent = 'e-10';
+                            break;
+                        case 'um':
+                            exponent = 'e-6';
+                            break;
+                    }
+                    if (obsCoreWavelengthRangeType?.value === 'contains') {
+                        if (obsCoreWavelengthContains.mounted) {
+                            if (checkField('obsCoreWavelengthContains', fields, false, fieldsValidity).valid) {
+                                const range = obsCoreWavelengthContains.value;
+                                const rangeList = [[`${range}${exponent}`, `${range}${exponent}`]];
+                                adqlConstraints.push(adqlQueryRange('em_min', 'em_max', rangeList, true));
+                                siaConstraints.push(...siaQueryRange('BAND', rangeList));
+                            }
+                        } else {
+                            enoughMounted = false;
+                        }
+                    }
+                    if (obsCoreWavelengthRangeType?.value === 'overlaps') {
+                        if (obsCoreWavelengthMinRange?.mounted) {
+                            const minValidity = checkField('obsCoreWavelengthMinRange', fields, true, fieldsValidity);
+                            checkField('obsCoreWavelengthMaxRange', fields, true, fieldsValidity);
+                            const anyHasValue = obsCoreWavelengthMinRange?.value || obsCoreWavelengthMaxRange?.value;
+                            if (anyHasValue) {
+                                const minValue = obsCoreWavelengthMinRange?.value?.length === 0  ? '-Inf' : obsCoreWavelengthMinRange?.value ?? '-Inf';
+                                const maxValue = obsCoreWavelengthMaxRange?.value?.length === 0  ? '+Inf' : obsCoreWavelengthMaxRange?.value ?? '-Inf';
+                                const lowerValue = minValue === '-Inf' ? minValue : `${minValue}${exponent}`;
+                                const upperValue = maxValue === '+Inf' ? maxValue : `${maxValue}${exponent}`;
+                                const rangeList = [[lowerValue, upperValue]];
+                                adqlConstraints.push(adqlQueryRange('em_min', 'em_max', rangeList));
+                                siaConstraints.push(...siaQueryRange('BAND', rangeList));
+                            } else {
+                                minValidity.valid = false;
+                                minValidity.message = 'at least one field must be populated';
+                            }
+                        } else {
+                            enoughMounted = false;
+                        }
+                    }
+                } else {
+                    enoughMounted = false;
                 }
             }
         }
-        return {
+        const constraintsResult = {
+            valid: Array.from(fieldsValidity.values()).every((v) => v.valid) && enoughMounted,
             adqlConstraint: adqlConstraints.join(' AND '),
-            adqlConstraintErrors: undefined,
+            siaConstraints,
+            siaConstraintErrors
+        };
+        let adqlConstraint;
+        updatePanelFields(fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle);
+        if (isPanelChecked(panelTitle, newFields)) {
+            if (constraintsResult.valid){
+                if (constraintsResult.adqlConstraint?.length > 0){
+                    adqlConstraint = constraintsResult.adqlConstraint;
+                } else {
+                    adqlConstraintErrors.push(`Unknown error processing ${panelTitle} constraints`);
+                }
+                if  (constraintsResult.siaConstraints?.length > 0){
+                    siaConstraints.push(...constraintsResult.siaConstraints);
+                }
+            } else if (!constraintsResult.adqlConstraint) {
+                console.log(`invalid ${panelTitle} adql constraints`);  // FIXME: remove before merge
+            }
+        }
+        return {
+            adqlConstraint,
+            adqlConstraintErrors,
             siaConstraints,
             siaConstraintErrors
         };
     };
 
-    const constraintResult = useConstraintReducer('wavelength', constraintReducer);
+    const constraintResult = useConstraintReducer('wavelength', constraintReducer, [selectionType, rangeType]);
 
     return (
         <FieldGroupCollapsible header={<Header title={panelTitle} helpID={tapHelpId(panelPrefix)}
@@ -740,7 +793,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                                 inputWidth={Width_Column}
                                 inputStyle={{overflow:'auto', height:16}}
                                 validator={minimumPositiveFloatValidator('Min Wavelength')}
-                                initialState={{value:'-Inf'}}
+                                placeholder={'-Inf'}
                             />
                             <ValidationField
                                 fieldKey={'obsCoreWavelengthMaxRange'}
@@ -748,7 +801,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                                 inputWidth={Width_Column}
                                 inputStyle={{overflow:'auto', height:16}}
                                 validator={maximumPositiveFloatValidator('Max Wavelength')}
-                                initialState={{value:'+Inf'}}
+                                placeholder={'+Inf'}
                             />
                         </div>
                         }
