@@ -200,11 +200,11 @@ export function BasicUI(props) {
 
     useEffect(() => {
         schemaName && loadTables(serviceUrl, schemaName, tableName);
-    }, [schemaName]);
+    }, [serviceUrl, schemaName]);
 
     useEffect(() => {
         tableName && loadColumns(serviceUrl, schemaName, tableName);
-    }, [tableName]);
+    }, [serviceUrl, schemaName, tableName]);
 
     if (error) {
         return (
@@ -235,12 +235,11 @@ export function BasicUI(props) {
                     </div>
                     <div style={{width: 10}}/>
                     <div style={{flexGrow: 1}} title={TABLE_TIP}>
-                        <NameSelectField
-                            fieldKey='tableName'
+                        <NameSelect
                             typeDesc='Table'
                             typeDescPlural='Tables'
                             options={tableOptions}
-                            initialState= {{value:tableName}}
+                            value={tableName}
                             onSelect = {(selectedTapTable) => {
                                 setTableName(selectedTapTable);
                             }}
