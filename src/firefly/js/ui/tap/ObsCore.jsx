@@ -60,7 +60,6 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
 
     const ObsCoreCalibrationLevels = new Enum({
-        '(all)': 'ALL',
         '0': '0',
         '1': '1',
         '2': '2',
@@ -92,7 +91,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
         }, []);
     };
 
-    const hasSubType = true; // getColumn(cols, "dataproduct_subtype") || false;
+    const hasSubType = cols.findIndex((v) => v.name === 'dataproduct_subtype') !== -1;
 
     const makeConstraints = function(fields, fieldsValidity) {
         const adqlConstraints = [];
@@ -101,6 +100,24 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
 
         const checkObsCoreField = (key, nullAllowed) => {
             return checkField(key, fields, true, fieldsValidity);
+        };
+
+        const multiConstraint = (value, columnName, siaName, quote) => {
+            const multiConstraint = [];
+            const _siaConstraints = [];
+            const valueList = value.split(',');
+            valueList.forEach((value) => {
+                multiConstraint.push(`${columnName} = ${quote}${value}${quote}`);
+                _siaConstraints.push(`${siaName}=${value}`);
+            });
+            let adqlConstraint = multiConstraint.join(' OR ');
+            if (multiConstraint.length > 1){
+                adqlConstraint = `( ${adqlConstraint} )`;
+            }
+            return {
+                adqlConstraint,
+                siaConstraints: _siaConstraints
+            };
         };
 
         // pull out the fields we care about
@@ -112,33 +129,22 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
         }
         checkObsCoreField('obsCoreCalibrationSelection', true);
         if (obsCoreCalibrationSelection.value) {
-            // We only do a section if ALL is not selected.
-            const calibList = obsCoreCalibrationSelection.value.split(',');
-            if (calibList.indexOf('ALL') >= 0){
-                // Object.assign(newFields['obsCoreCalibrationSelection'], {value: 'ALL'});
-            } else {
-                const calibrationConstraint = [];
-                calibList.forEach((level) => {
-                    calibrationConstraint.push(`calib_level = ${level}`);
-                    siaConstraints.push(`CALIB=${level}`);
-                });
-                let adqlConstraint = calibrationConstraint.join(' OR ');
-                if (calibrationConstraint.length > 1){
-                    adqlConstraint = `( ${adqlConstraint} )`;
-                }
-                // sia is alrady an OR
-                adqlConstraints.push(adqlConstraint);
-            }
+            const mcResult = multiConstraint(obsCoreCalibrationSelection.value, 'calib_level', 'CALIB', '');
+            adqlConstraints.push(mcResult.adqlConstraint);
+            siaConstraints.push(...mcResult.siaConstraints);
         }
         checkObsCoreField('obsCoreTypeSelection', true);
         if (obsCoreTypeSelection.value !== '') {
-            adqlConstraints.push(`dataproduct_type = '${obsCoreTypeSelection.value}'`);
-            siaConstraints.push(`DPTYPE=${obsCoreTypeSelection.value}`);
+            const mcResult = multiConstraint(obsCoreTypeSelection.value, 'dataproduct_type', 'DPTYPE', '\'');
+            adqlConstraints.push(mcResult.adqlConstraint);
+            siaConstraints.push(...mcResult.siaConstraints);
         }
-        checkObsCoreField('obsCoreSubType', true);
-        if (obsCoreSubType.value?.length > 0) {
-            adqlConstraints.push(`dataproduct_subtype = '${obsCoreSubType.value}'`);
-            siaConstraintErrors.set('obsCoreSubType', {valid: false, message: 'Not able to translate dataproduct_subtype to SIAV2 query'});
+        if (hasSubType){
+            checkObsCoreField('obsCoreSubType', true);
+            if (obsCoreSubType.value?.length > 0) {
+                adqlConstraints.push(`dataproduct_subtype = '${obsCoreSubType.value}'`);
+                siaConstraintErrors.set('obsCoreSubType', {valid: false, message: 'Not able to translate dataproduct_subtype to SIAV2 query'});
+            }
         }
         const adqlConstraint = adqlConstraints.join(' AND ');
         const allValid = Array.from(fieldsValidity.values()).every((v) => v.valid);
@@ -211,14 +217,13 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                     />
                 </div>
                 <div style={{display: 'flex', flexDirection: 'column', marginTop: '5px'}}>
-                    <ListBoxInputField
+                    <CheckboxGroupInputField
                         fieldKey={'obsCoreCalibrationSelection'}
                         options={calibrationOptions()}
-                        tooltip={'Select ObsCore Calibration Level'}
+                        tooltip={'Select ObsCore Calibration Level. \n0 is Raw instrumental data, \n1 is Instrumental data in standard format \n  (e.g. FITS, VOTable, etc...), \n2 is Calibrated, science-ready data, \n3 is Enhanced data products, \n4 is Analysis data products'}
                         label={'Calibration Level:'}
                         labelWidth={LableSaptail}
-                        initialState={{value: 'ALL'}}
-                        multiple={false}
+                        multiple={true}
                     />
                 </div>
                 <div style={{display: 'flex', flexDirection: 'column'}}>
@@ -230,10 +235,10 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                         initialState={{value: 'image'}}
                         options={typeOptions()}
                         wrapperStyle={{marginRight: '15px', padding: '8px 0 5px 0'}}
-                        multiple={false}
+                        multiple={true}
                     />
                 </div>
-                <div style={{marginTop: '5px'}}>
+                {hasSubType && <div style={{marginTop: '5px'}}>
                     <ValidationField
                         fieldKey={'obsCoreSubType'}
                         groupKey={skey}
@@ -244,7 +249,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                         labelWidth={LableSaptail}
                         validator={fakeValidator}
                     />
-                </div>
+                </div>}
                 {DEBUG_OBSCORE && <div>
                     adql fragment: {constraintResult?.adqlConstraint} <br/>
                     sia fragment: {constraintResult?.siaConstraintErrors?.length ? `Error: ${constraintResult.siaConstraintErrors.join(' ')}` : constraintResult?.siaConstraints.join('&')}
