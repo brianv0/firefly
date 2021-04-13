@@ -287,50 +287,96 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
 
     const constraintReducer = (fields, newFields) => {
-        const {exposureCheck} = fields;
         const adqlConstraints = [];
+        const adqlConstraintErrors = [];
         const siaConstraints = [];
         const siaConstraintErrors = [];
-        if (fields && exposureCheck?.value === 'Exposure') {
+
+        const fieldsValidity = new Map();
+        let enoughMounted = true;
+        if (fields) {
             const {exposureRangeType} = fields;
             if (exposureRangeType?.value === 'range'){
                 const {exposureMin, exposureMax} = fields;
-                if (exposureMin?.valid && exposureMax?.valid) {
-                    // We don't care what exposureTimeMode is - we just care about getting the time from the components
-                    const expMinTimeInfo = getTimeInfo(exposureMin.timeMode, exposureMin.value, exposureMin.valid, exposureMin.message);
-                    const expMaxTimeInfo = getTimeInfo(exposureMax.timeMode, exposureMax.value, exposureMax.valid, exposureMax.message);
-                    const minValue = expMinTimeInfo[MJD].value.length ? expMinTimeInfo[MJD].value : '-Inf';
-                    const maxValue = expMaxTimeInfo[MJD].value.length ? expMaxTimeInfo[MJD].value : '+Inf';
-                    const rangeList = [[minValue, maxValue]];
-                    adqlConstraints.push(adqlQueryRange('t_min', 't_max', rangeList, false));
-                    siaConstraints.push(...siaQueryRange('TIME', rangeList));
+                if (exposureMin?.mounted && exposureMax?.mounted) {
+                    const minValidity = checkField('exposureMin', fields, true, fieldsValidity);
+                    const maxValidity = checkField('exposureMax', fields, true, fieldsValidity);
+                    if (exposureMin?.value || exposureMax?.value) {
+                        // We don't care what exposureTimeMode is - we just care about getting the time from the components
+                        const expMinTimeInfo = getTimeInfo(exposureMin.timeMode, exposureMin.value, exposureMin.valid, exposureMin.message);
+                        const expMaxTimeInfo = getTimeInfo(exposureMax.timeMode, exposureMax.value, exposureMax.valid, exposureMax.message);
+                        const minValue = expMinTimeInfo[MJD].value.length ? expMinTimeInfo[MJD].value : '-Inf';
+                        const maxValue = expMaxTimeInfo[MJD].value.length ? expMaxTimeInfo[MJD].value : '+Inf';
+                        if (minValue && maxValue) {
+                            if (Number(minValue) > Number(maxValue)) {
+                                maxValidity.valid = false;
+                                maxValidity.message = 'the start time is greater than the end time';
+                            }
+                        }
+                        if (minValidity.valid && maxValidity.valid){
+                            const rangeList = [[minValue, maxValue]];
+                            adqlConstraints.push(adqlQueryRange('t_min', 't_max', rangeList, false));
+                            siaConstraints.push(...siaQueryRange('TIME', rangeList));
+                        }
+                    } else {
+                        minValidity.valid = false;
+                        minValidity.message = 'empty field';
+                    }
+                } else {
+                    enoughMounted = false;
                 }
             } else if (exposureRangeType?.value === 'since') {
                 const {exposureSinceValue, exposureSinceOptions} = fields;
-                if (exposureSinceValue?.value){
-                    let sinceMillis;
-                    switch (exposureSinceOptions.value){
-                        case 'hours':
-                            sinceMillis = toFloat(exposureSinceValue.value) * 60 * 60 * 1000;
-                            break;
-                        case 'days':
-                            sinceMillis = toFloat(exposureSinceValue.value) * 24 * 60 * 60 * 1000;
-                            break;
-                        case 'years':
-                            sinceMillis = toFloat(exposureSinceValue.value) * 365 * 24 * 60 * 60 * 1000;
-                            break;
+                if (exposureSinceValue?.mounted){
+                    if (checkField('exposureSinceValue', fields, false, fieldsValidity).valid) {
+                        let sinceMillis;
+                        switch (exposureSinceOptions.value){
+                            case 'hours':
+                                sinceMillis = toFloat(exposureSinceValue.value) * 60 * 60 * 1000;
+                                break;
+                            case 'days':
+                                sinceMillis = toFloat(exposureSinceValue.value) * 24 * 60 * 60 * 1000;
+                                break;
+                            case 'years':
+                                sinceMillis = toFloat(exposureSinceValue.value) * 365 * 24 * 60 * 60 * 1000;
+                                break;
+                        }
+                        const sinceString = new Date(Date.now() - sinceMillis).toISOString();
+                        const mjdTime = convertISOToMJD(sinceString);
+                        const rangeList = [[`${mjdTime}`, '+Inf']];
+                        adqlConstraints.push(adqlQueryRange('t_min', 't_max', rangeList));
+                        siaConstraints.push(...siaQueryRange('TIME', rangeList));
                     }
-                    const sinceString = new Date(Date.now() - sinceMillis).toISOString();
-                    const mjdTime = convertISOToMJD(sinceString);
-                    const rangeList = [[`${mjdTime}`, '+Inf']];
-                    adqlConstraints.push(adqlQueryRange('t_min', 't_max', rangeList));
-                    siaConstraints.push(...siaQueryRange('TIME', rangeList));
+                } else {
+                    enoughMounted = false;
                 }
             }
         }
-        return {
+        const constraintsResult = {
+            valid: Array.from(fieldsValidity.values()).every((v) => v.valid) && enoughMounted,
             adqlConstraint: adqlConstraints.join(' AND '),
-            adqlConstraintErrors: undefined,
+            siaConstraints,
+            siaConstraintErrors
+        };
+        let adqlConstraint;
+        updatePanelFields(fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle);
+        if (isPanelChecked(panelTitle, newFields)) {
+            if (constraintsResult.valid){
+                if (constraintsResult.adqlConstraint?.length > 0){
+                    adqlConstraint = constraintsResult.adqlConstraint;
+                } else {
+                    adqlConstraintErrors.push(`Unknown error processing ${panelTitle} constraints`);
+                }
+                if  (constraintsResult.siaConstraints?.length > 0){
+                    siaConstraints.push(...constraintsResult.siaConstraints);
+                }
+            } else if (!constraintsResult.adqlConstraint) {
+                console.log(`invalid ${panelTitle} adql constraints`);  // FIXME: remove before merge
+            }
+        }
+        return {
+            adqlConstraint,
+            adqlConstraintErrors,
             siaConstraints,
             siaConstraintErrors
         };
@@ -442,7 +488,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
         );
     };
 
-    const constraintResult = useConstraintReducer('exposure', constraintReducer);
+    const constraintResult = useConstraintReducer('exposure', constraintReducer, [rangeType]);
 
     return (
         <FieldGroupCollapsible
