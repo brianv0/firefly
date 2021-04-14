@@ -15,7 +15,6 @@ import {HeaderFont, ISO, MJD} from 'firefly/ui/tap/TapUtil';
 import HelpIcon from 'firefly/ui/HelpIcon';
 import * as PropTypes from 'prop-types';
 import {formFeedback, isShowHelp} from 'firefly/ui/TimePanel';
-import {clone} from 'firefly/util/WebUtil';
 
 /* Style Helpers */
 export const LeftInSearch = 8;
@@ -197,7 +196,7 @@ export const updatePanelFields = (fieldsValidity, valid, fields, newFields, pane
     const panelPrefix = getPanelPrefix(panelTitle);
     const panelCheckId = `${panelPrefix}Check`;
     const panelFieldKey = `${panelPrefix}SearchPanel`;
-    const firstMessage = Array.from(fieldsValidity.values()).find((v) => !v.valid)?.message || '';
+    const firstMessage = Array.from(fieldsValidity.values()).find((v) => !v.valid)?.message ?? defaultMessage;
     if (newFields) {
         const panelActive = get(fields, [panelCheckId, 'value']) === panelTitle;
         const panelValid = get(fields, [panelFieldKey, 'panelValid'], false);
@@ -211,7 +210,7 @@ export const updatePanelFields = (fieldsValidity, valid, fields, newFields, pane
 
         Object.assign(newFields[panelFieldKey], {
             'panelValid': valid,
-            'panelMessage': firstMessage || (!valid && defaultMessage)
+            'panelMessage': !valid ? firstMessage : '',
         });
         if (valid && !panelValid && [...fieldsValidity.keys()].length > 0) {
             set(newFields, [panelCheckId, 'value'], panelTitle);

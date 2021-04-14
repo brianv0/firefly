@@ -203,7 +203,7 @@ function TapSearchPanelComponents({initArgs, serviceUrl, onTapServiceOptionSelec
                         wrapperStyle={{alignSelf: 'center'}}
                     />
                 </div>
-                {selectBy === 'basic' && <BasicUI  serviceUrl={serviceUrl} initArgs={initArgs}/>}
+                {(selectBy === 'basic' || selectBy === 'obscore') && <BasicUI  serviceUrl={serviceUrl} selectBy={selectBy} initArgs={initArgs}/>}
                 {selectBy === 'adql' && <AdqlUI serviceUrl={serviceUrl}/>}
             </div>
         </FieldGroup>

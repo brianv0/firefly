@@ -89,7 +89,7 @@ export function loadObsCoreSchemaTables(serviceUrl) {
         if (tableModel.error) {
             tableModel.error = `Failed to get ObsCore tables for ${serviceUrl}: ${tableModel.error}`;
             logger.error(tableModel.error);
-        } else if (tableModel.tableData && tableModel.tableData.data) {
+        } else if (tableModel?.tableData?.data) {
             if (getColumnIdx(tableModel, 'schema_name') < 0) {
                 tableModel.error = 'Invalid ObsCore discovery result';
             }
@@ -109,6 +109,8 @@ export function loadObsCoreSchemaTables(serviceUrl) {
                 }
                 return (s1 > s2 ? 1 : -1);
             });
+        } else {
+            logger.debug(`no obsCore tables found for ${serviceUrl}`);
         }
         return tableModel;
 

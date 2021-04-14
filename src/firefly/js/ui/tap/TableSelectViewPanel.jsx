@@ -83,6 +83,10 @@ export function BasicUI(props) {
     const [schemaOptions, setSchemaOptions] = useState();
     const [tableOptions, setTableOptions] = useState();
     const [columnsModel, setColumnsModel] = useState();
+    const selectBy = props.selectBy;
+
+    const obsCoreSelected = selectBy === 'obscore';
+    const tableSectionNumber = !obsCoreSelected ? '4' : '3';
 
     const splitDef = SpatialPanelWidth+80;
     const splitMax = SpatialPanelWidth+80;
@@ -179,8 +183,8 @@ export function BasicUI(props) {
             // and we should be able to just check the names, but this is a bit more robust (probably?)
             const matchesObsCore = matchesObsCoreHeuristic(schemaName, tableName, columnsModel);
             setObsCoreEnabled(matchesObsCore);
-            setTapBrowserState({serviceUrl: requestServiceUrl, schemaName: requestSchemaName, schemaOptions: schemaOptions,
-                tableName: requestTableName, tableOptions: tableOptions, columnsModel: columnsModel, obsCoreEnabled: matchesObsCore, obsCoreTables: obsCoreTables});
+            setTapBrowserState({serviceUrl: requestServiceUrl, schemaName: requestSchemaName, schemaOptions,
+                tableName: requestTableName, tableOptions, columnsModel, obsCoreEnabled: matchesObsCore, obsCoreTables});
         });
     };
     useEffect(() => {
@@ -202,6 +206,29 @@ export function BasicUI(props) {
         tableName && loadColumns(serviceUrl, schemaName, tableName);
     }, [serviceUrl, schemaName, tableName]);
 
+    useEffect(() => {
+        if (selectBy === 'obscore'){
+            let seenTable = false;
+            obsCoreTables.forEach((tableRow) => {
+                const [schema, table, ...more] = tableRow;
+                // match schema name/table name
+                if (matchesObsCoreHeuristic(schema, tableName, null)){
+                    setSchemaName(schema);
+                    setTableName(table);
+                    seenTable = true;
+                }
+            });
+            if (!seenTable){
+                const [schema, table, ...more] = obsCoreTables[0];
+                setSchemaName(schema);
+                setTableName(table);
+            }
+        } else {
+            setSchemaName(undefined);
+            setTableName(undefined);
+        }
+    }, [serviceUrl, selectBy]);
+
     if (error) {
         return (
             <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px 5px'}}>
@@ -215,6 +242,7 @@ export function BasicUI(props) {
     // is set correctly after unmount and mount
     return (
         <Fragment>
+            {!obsCoreSelected &&
             <div className='TapSearch__section'>
                 <SectionTitle title='3. Select Table' helpId='selectTable' tip={SCH_TAB_TITLE_TIP}/>
                 <div style={{display: 'inline-flex', width: '100%', marginRight: 3, maxWidth: 1000}}>
@@ -224,7 +252,7 @@ export function BasicUI(props) {
                                     options={schemaOptions}
                                     value={schemaName}
                                     internalHeight={'45px'}
-                                    onSelect = {(selectedTapSchema) => {
+                                    onSelect={(selectedTapSchema) => {
                                         setSchemaName(selectedTapSchema);
                                     }}
                         />
@@ -236,17 +264,18 @@ export function BasicUI(props) {
                             typeDescPlural='Tables'
                             options={tableOptions}
                             value={tableName}
-                            onSelect = {(selectedTapTable) => {
+                            onSelect={(selectedTapTable) => {
                                 setTableName(selectedTapTable);
                             }}
                         />
                     </div>
                 </div>
             </div>
+            }
 
             <div className='TapSearch__section' style={{flexDirection: 'column', flexGrow: 1}}>
                 <div style={{ display: 'inline-flex', width: 'calc(100% - 3px)', justifyContent: 'space-between'}}>
-                    <div className='TapSearch__section--title'>4. Enter Constraints <HelpIcon helpId={tapHelpId('constraints')}/> </div>
+                    <div className='TapSearch__section--title'>{tableSectionNumber}. Enter Constraints <HelpIcon helpId={tapHelpId('constraints')}/> </div>
                     <TableColumnsConstraintsToolbar key={tableName}
                                                     tableName={tableName}
                                                     columnsModel={columnsModel}
