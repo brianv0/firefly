@@ -384,7 +384,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                 const maxValidity = checkField('exposureLengthMax', fields, true, fieldsValidity);
                 if (exposureLengthMin?.value || exposureLengthMax?.value) {
                     const minValue = exposureLengthMin?.value?.length === 0 ? '-Inf' : exposureLengthMin?.value ?? '-Inf';
-                    const maxValue = exposureLengthMax?.value?.length === 0 ? '+Inf' : exposureLengthMax?.value ?? '-Inf';
+                    const maxValue = exposureLengthMax?.value?.length === 0 ? '+Inf' : exposureLengthMax?.value ?? '+Inf';
                     const rangeList = [[minValue, maxValue]];
                     if (!minValue.endsWith('Inf') && !maxValue.endsWith('Inf') && Number(minValue) > Number(maxValue)) {
                         maxValidity.valid = false;
@@ -758,16 +758,21 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                     if (obsCoreWavelengthRangeType?.value === 'overlaps') {
                         if (obsCoreWavelengthMinRange?.mounted) {
                             const minValidity = checkField('obsCoreWavelengthMinRange', fields, true, fieldsValidity);
-                            checkField('obsCoreWavelengthMaxRange', fields, true, fieldsValidity);
+                            const maxValidity = checkField('obsCoreWavelengthMaxRange', fields, true, fieldsValidity);
                             const anyHasValue = obsCoreWavelengthMinRange?.value || obsCoreWavelengthMaxRange?.value;
                             if (anyHasValue) {
                                 const minValue = obsCoreWavelengthMinRange?.value?.length === 0  ? '-Inf' : obsCoreWavelengthMinRange?.value ?? '-Inf';
-                                const maxValue = obsCoreWavelengthMaxRange?.value?.length === 0  ? '+Inf' : obsCoreWavelengthMaxRange?.value ?? '-Inf';
+                                const maxValue = obsCoreWavelengthMaxRange?.value?.length === 0  ? '+Inf' : obsCoreWavelengthMaxRange?.value ?? '+Inf';
                                 const lowerValue = minValue === '-Inf' ? minValue : `${minValue}${exponent}`;
                                 const upperValue = maxValue === '+Inf' ? maxValue : `${maxValue}${exponent}`;
                                 const rangeList = [[lowerValue, upperValue]];
-                                adqlConstraints.push(adqlQueryRange('em_min', 'em_max', rangeList));
-                                siaConstraints.push(...siaQueryRange('BAND', rangeList));
+                                if (!lowerValue.endsWith('Inf') && !upperValue.endsWith('Inf') && Number(lowerValue) > Number(upperValue)) {
+                                    maxValidity.valid = false;
+                                    maxValidity.message = 'the max wavelength is smaller than the min wavelength';
+                                } else {
+                                    adqlConstraints.push(adqlQueryRange('em_min', 'em_max', rangeList));
+                                    siaConstraints.push(...siaQueryRange('BAND', rangeList));
+                                }
                             } else {
                                 minValidity.valid = false;
                                 minValidity.message = 'at least one field must be populated';
