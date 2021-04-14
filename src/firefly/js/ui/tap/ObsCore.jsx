@@ -123,7 +123,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
         };
 
         // pull out the fields we care about
-        const {obsCoreCollection, obsCoreCalibrationSelection, obsCoreTypeSelection, obsCoreSubType} = fields;
+        const {obsCoreCollection, obsCoreCalibrationSelection, obsCoreTypeSelection, obsCoreSubType, obsCoreInstrumentName} = fields;
         checkObsCoreField('obsCoreCollection', true);
         if (obsCoreCollection.value?.length > 0) {
             adqlConstraints.push(`obs_collection = '${obsCoreCollection.value}'`);
@@ -138,6 +138,12 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
         checkObsCoreField('obsCoreTypeSelection', true);
         if (obsCoreTypeSelection.value !== '') {
             const mcResult = multiConstraint(obsCoreTypeSelection.value, 'dataproduct_type', 'DPTYPE', '\'');
+            adqlConstraints.push(mcResult.adqlConstraint);
+            siaConstraints.push(...mcResult.siaConstraints);
+        }
+        checkObsCoreField('obsCoreInstrumentName', true);
+        if (obsCoreInstrumentName.value?.length > 0) {
+            const mcResult = multiConstraint(obsCoreInstrumentName.value, 'instrument_name', 'INSTRUMENT', '\'');
             adqlConstraints.push(mcResult.adqlConstraint);
             siaConstraints.push(...mcResult.siaConstraints);
         }
@@ -238,6 +244,18 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                         options={typeOptions()}
                         wrapperStyle={{marginRight: '15px', padding: '8px 0 5px 0'}}
                         multiple={true}
+                    />
+                </div>
+                <div style={{marginTop: '5px'}}>
+                    <ValidationField
+                        fieldKey={'obsCoreInstrumentName'}
+                        groupKey={skey}
+                        inputWidth={Width_Column}
+                        inputStyle={{overflow: 'auto', height: 16}}
+                        tooltip={'Select ObsCore Instrument Name'}
+                        label={'Instrument Name:'}
+                        labelWidth={LableSaptail}
+                        validator={fakeValidator}
                     />
                 </div>
                 {hasSubType && <div style={{marginTop: '5px'}}>
