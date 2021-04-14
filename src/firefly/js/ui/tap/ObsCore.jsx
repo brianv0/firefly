@@ -294,16 +294,19 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
 
     const constraintReducer = (fields, newFields) => {
+        let constraintsResult = {
+            siaConstraints: [],
+            siaConstraintErrors: [],
+        };
         const adqlConstraints = [];
         const adqlConstraintErrors = [];
-        const siaConstraints = [];
-        const siaConstraintErrors = [];
 
         const fieldsValidity = new Map();
         let enoughMounted = true;
+        let seenValue = false;
         if (fields) {
             const {exposureRangeType} = fields;
-            if (exposureRangeType?.value === 'range'){
+            if (exposureRangeType?.value === 'range') {
                 const {exposureMin, exposureMax} = fields;
                 if (exposureMin?.mounted && exposureMax?.mounted) {
                     const minValidity = checkField('exposureMin', fields, true, fieldsValidity);
@@ -320,24 +323,22 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                                 maxValidity.message = 'the start time is greater than the end time';
                             }
                         }
-                        if (minValidity.valid && maxValidity.valid){
+                        if (minValidity.valid && maxValidity.valid) {
                             const rangeList = [[minValue, maxValue]];
                             adqlConstraints.push(adqlQueryRange('t_min', 't_max', rangeList, false));
-                            siaConstraints.push(...siaQueryRange('TIME', rangeList));
+                            constraintsResult.siaConstraints.push(...siaQueryRange('TIME', rangeList));
                         }
-                    } else {
-                        minValidity.valid = false;
-                        minValidity.message = 'at least one field must be populated';
+                        seenValue = true;
                     }
                 } else {
                     enoughMounted = false;
                 }
             } else if (exposureRangeType?.value === 'since') {
                 const {exposureSinceValue, exposureSinceOptions} = fields;
-                if (exposureSinceValue?.mounted){
+                if (exposureSinceValue?.mounted) {
                     if (checkField('exposureSinceValue', fields, false, fieldsValidity).valid) {
                         let sinceMillis;
-                        switch (exposureSinceOptions.value){
+                        switch (exposureSinceOptions.value) {
                             case 'hours':
                                 sinceMillis = toFloat(exposureSinceValue.value) * 60 * 60 * 1000;
                                 break;
@@ -352,29 +353,51 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                         const mjdTime = convertISOToMJD(sinceString);
                         const rangeList = [[`${mjdTime}`, '+Inf']];
                         adqlConstraints.push(adqlQueryRange('t_min', 't_max', rangeList));
-                        siaConstraints.push(...siaQueryRange('TIME', rangeList));
+                        constraintsResult.siaConstraints.push(...siaQueryRange('TIME', rangeList));
                     }
+                    seenValue = true;
                 } else {
                     enoughMounted = false;
                 }
             }
+            const {exposureLengthMin, exposureLengthMax} = fields;
+            if (enoughMounted && exposureLengthMin?.mounted) {
+                checkField('exposureLengthMin', fields, true, fieldsValidity);
+                const maxValidity = checkField('exposureLengthMax', fields, true, fieldsValidity);
+                if (exposureLengthMin?.value || exposureLengthMax?.value) {
+                    const minValue = exposureLengthMin?.value?.length === 0 ? '-Inf' : exposureLengthMin?.value ?? '-Inf';
+                    const maxValue = exposureLengthMax?.value?.length === 0 ? '+Inf' : exposureLengthMax?.value ?? '-Inf';
+                    const rangeList = [[minValue, maxValue]];
+                    if (!minValue.endsWith('Inf') && !maxValue.endsWith('Inf') && Number(minValue) > Number(maxValue)) {
+                        maxValidity.valid = false;
+                        maxValidity.message = 'exposure time max must be greater than time min';
+                    } else {
+                        adqlConstraints.push(adqlQueryRange('t_exptime', 't_exptime', rangeList, true));
+                        constraintsResult.siaConstraints.push(...siaQueryRange('EXPTIME', rangeList));
+                    }
+                    seenValue = true;
+                }
+            } else {
+                enoughMounted = false;
+            }
         }
-        const constraintsResult = {
-            valid: Array.from(fieldsValidity.values()).every((v) => v.valid) && enoughMounted,
+        constraintsResult = {
+            ...constraintsResult,
+            valid: Array.from(fieldsValidity.values()).every((v) => v.valid) && enoughMounted && seenValue,
             adqlConstraint: adqlConstraints.join(' AND '),
-            siaConstraints,
-            siaConstraintErrors
         };
         let adqlConstraint;
-        updatePanelFields(fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle);
+        const siaConstraints = [];
+        const siaConstraintErrors = [];
+        updatePanelFields(fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle, 'at least one field must be populated');
         if (isPanelChecked(panelTitle, newFields)) {
-            if (constraintsResult.valid){
-                if (constraintsResult.adqlConstraint?.length > 0){
+            if (constraintsResult.valid) {
+                if (constraintsResult.adqlConstraint?.length > 0) {
                     adqlConstraint = constraintsResult.adqlConstraint;
                 } else {
                     adqlConstraintErrors.push(`Unknown error processing ${panelTitle} constraints`);
                 }
-                if  (constraintsResult.siaConstraints?.length > 0){
+                if (constraintsResult.siaConstraints?.length > 0) {
                     siaConstraints.push(...constraintsResult.siaConstraints);
                 }
             } else if (!constraintsResult.adqlConstraint) {
@@ -434,7 +457,15 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                                     groupKey={skey}
                                     timeMode={expTimeMode}
                                     icon={icon}
-                                    onClickIcon={changeDatePickerOpenStatusNew(FROM, 'exposureMin', expMin, expTimeMode, (value) => { dispatchValueChange({...{value}, timeMode: expTimeMode /* NOTE: if we don't do this - we can't see the current time mode for this field (when new) */, fieldKey: 'exposureMin', groupKey});})}
+                                    onClickIcon={changeDatePickerOpenStatusNew(FROM, 'exposureMin', expMin, expTimeMode, (value) => {
+                                        /* NOTE: if we don't do timeMode: expTimeMode - we can't see the current time mode for this field (when new) */
+                                        dispatchValueChange({
+                                            ...{value},
+                                            timeMode: expTimeMode,
+                                            fieldKey: 'exposureMin',
+                                            groupKey
+                                        });
+                                    })}
                                     feedbackStyle={{height: 100}}
                                     inputWidth={Width_Column}
                                     inputStyle={{overflow: 'auto', height: 16}}
@@ -454,7 +485,14 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                                     groupKey={skey}
                                     timeMode={expTimeMode}
                                     icon={icon}
-                                    onClickIcon={changeDatePickerOpenStatusNew(TO, 'exposureMax', expMax, expTimeMode, (value) => { dispatchValueChange({...{value}, timeMode: expTimeMode, fieldKey: 'exposureMax', groupKey});})}
+                                    onClickIcon={changeDatePickerOpenStatusNew(TO, 'exposureMax', expMax, expTimeMode, (value) => {
+                                        dispatchValueChange({
+                                            ...{value},
+                                            timeMode: expTimeMode,
+                                            fieldKey: 'exposureMax',
+                                            groupKey
+                                        });
+                                    })}
                                     feedbackStyle={{height: 100}}
                                     inputWidth={Width_Column}
                                     inputStyle={{overflow: 'auto', height: 16}}
@@ -467,25 +505,48 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                     </div>
                     }
                     {rangeType === 'since' &&
-                    <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5}}>
+                    <div style={{display: 'flex', marginTop: 10}}>
                         <ValidationField
                             fieldKey={'exposureSinceValue'} // FIXME: Introduce SinceValue or similar
                             groupKey={skey}
                             // feedbackStyle={{height: 100}}
                             inputWidth={Width_Column}
+                            label={'Finished in the last:'}
+                            labelWidth={LableSaptail}
                             inputStyle={{overflow: 'auto', height: 16}}
                             validator={fakeValidator}
                         />
-                        <RadioGroupInputField
+                        <ListBoxInputField
                             fieldKey={'exposureSinceOptions'} // FIXME: Introduce SinceOptions
                             options={[{label: 'Hours', value: 'hours'}, {label: 'Days', value: 'days'}, {
                                 label: 'Years',
                                 value: 'years'
                             }]}
-                            alignment={'horizontal'}
                         />
                     </div>
                     }
+                    <div style={{display: 'flex', marginTop: 5}}>
+                        <ValidationField
+                            fieldKey={'exposureLengthMin'}
+                            groupKey={skey}
+                            inputWidth={Width_Column}
+                            inputStyle={{overflow: 'auto', height: 16}}
+                            label={'Exposure time:'}
+                            tooltip={'t_exptime, in seconds, must be greater than this value'}
+                            labelWidth={LableSaptail}
+                            validator={minimumPositiveFloatValidator('Minimum Exposure Length')}
+                            placeholder={'-Inf'}
+                        />
+                        <ValidationField
+                            fieldKey={'exposureLengthMax'}
+                            groupKey={skey}
+                            inputWidth={Width_Column}
+                            inputStyle={{overflow: 'auto', height: 16}}
+                            tooltip={'t_exptime, in seconds, must be lesser than this value'}
+                            validator={maximumPositiveFloatValidator('Maximum Exposure Length')}
+                            placeholder={'+Inf'}
+                        />
+                    </div>
                 </div>
                 {DEBUG_OBSCORE && <div>
                     adql fragment: {constraintResult?.adqlConstraint} <br/>
@@ -501,7 +562,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
         <FieldGroupCollapsible
             header={<Header title={panelTitle} helpID={tapHelpId(`${panelPrefix}`)}
                             checkID={`${panelPrefix}Check`}
-                message={message}
+                            message={message}
             />}
             initialState={{value: 'closed'}}
             fieldKey={`${panelPrefix}SearchPanel`}
@@ -525,20 +586,17 @@ function adqlQueryRange(lowerBound, upperBound, rangeList, contains=false) {
     rangeList.forEach((rangePair) =>{
         const [lowerValue, upperValue] = rangePair;
         const query = [];
-        if (contains) {
-            if (lowerValue !== '-Inf' && upperValue !== 'Inf') {
-                if (lowerValue === upperValue){
-                    query.push(lowerValue,'BETWEEN',lowerBound,'AND',upperBound);
-                }
-                else {
-                    query.push(
-                        lowerValue, 'BETWEEN', lowerBound, 'AND', upperBound,
-                        'AND',
-                        upperValue, 'BETWEEN', lowerBound, 'AND', upperBound,
-                    );
-                }
+        if (contains && lowerValue !== '-Inf' && !upperValue.endsWith('Inf')) {
+            if (lowerValue === upperValue){
+                query.push(lowerValue,'BETWEEN', lowerBound,'AND',upperBound);
+            } else if (lowerBound === upperBound) {
+                query.push(lowerBound, 'BETWEEN', lowerValue, 'AND', upperValue);
             } else {
-                logger.warn('Boundaries contain an infinite range');
+                query.push(
+                    lowerValue, 'BETWEEN', lowerBound, 'AND', upperBound,
+                    'AND',
+                    upperValue, 'BETWEEN', lowerBound, 'AND', upperBound,
+                );
             }
         } else {
             if (!upperValue.endsWith('Inf')) {
