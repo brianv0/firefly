@@ -45,6 +45,9 @@ import {
 import {ExposureDurationSearch, ObsCoreSearch, ObsCoreWavelengthSearch} from 'firefly/ui/tap/ObsCore';
 import {getAppOptions} from 'firefly/api/ApiUtil';
 import CoordinateSys from 'firefly/visualize/CoordSys';
+import {Logger} from 'firefly/util/Logger';
+
+const logger = Logger('TableSearchMethods');
 
 export const skey = 'TABLE_SEARCH_METHODS';
 const Spatial = 'Spatial';
@@ -308,7 +311,7 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
                     siaConstraints.push(...constraintsResult.siaConstraints);
                 }
             } else if (!constraintsResult.adqlConstraint) {
-                console.log(`invalid ${panelTitle} adql constraints`);  // FIXME: remove before merge
+                logger.warn(`invalid ${panelTitle} adql constraints`);
             }
         }
         return {
@@ -604,12 +607,12 @@ function selectSpatialSearchMethod(groupKey, fields, spatialMethod) {
         }, []);
     };
 
-    const spatialSearchList = (
-        <div style={{display:'flex', flexDirection:'column'}}>
+    return (
+        <div style={{display: 'flex', flexDirection: 'column'}}>
             <ListBoxInputField
                 fieldKey={SpatialMethod}
-                options={ spatialOptions()}
-                wrapperStyle={{marginRight:'15px', padding:'8px 0 5px 0'}}
+                options={spatialOptions()}
+                wrapperStyle={{marginRight: '15px', padding: '8px 0 5px 0'}}
                 multiple={false}
                 tooltip={'Select spatial search method'}
                 label={getLabel(SpatialMethod, ':')}
@@ -621,7 +624,6 @@ function selectSpatialSearchMethod(groupKey, fields, spatialMethod) {
             {renderTargetPanel(groupKey, fields, spatialMethod)}
         </div>
     );
-    return spatialSearchList;
 }
 
 ObsCoreSearch.propTypes = {
@@ -1029,7 +1031,7 @@ function buildTapSearchMethodReducer(columnsModel) {
                     }
                     break;
                 default:
-                    console.warn(`Unhandled field group action: ${action.type}`);
+                    logger.warn(`Unhandled field group action: ${action.type}`);
             }
             return rFields;
         }
@@ -1065,10 +1067,8 @@ function timeValidator(val) {
 
 function formCenterColumns(columnsTable) {
     const centerCols = findCenterColumnsByColumnsModel(columnsTable);
-    const centerColObj = (centerCols && centerCols.lonCol && centerCols.latCol) ?
+    return (centerCols && centerCols.lonCol && centerCols.latCol) ?
         {lon: centerCols.lonCol.column_name, lat: centerCols.latCol.column_name} : {lon: '', lat: ''};
-
-    return centerColObj;
 }
 
 const getFieldValidity  = (fields, fieldKey, nullAllowed) => {
