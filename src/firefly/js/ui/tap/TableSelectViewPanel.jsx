@@ -115,9 +115,6 @@ export function BasicUI(props) {
                 if (!requestSchemaName || !schemas.includes(requestSchemaName)) {
                     requestSchemaName = schemas[0];
                 }
-                if (requestTableName) {
-                    setTableName(requestTableName);
-                }
                 const schemaDescriptions = getColumnValues(tableModel, 'description');
                 const schemaOptions = schemas.map((e, i) => {
                     const label = schemaDescriptions[i] ? schemaDescriptions[i] : `[${e}]`;
@@ -170,9 +167,8 @@ export function BasicUI(props) {
     };
 
     const loadColumns = (requestServiceUrl, requestSchemaName, requestTableName) => {
-        if(columnsModel){
-            setColumnsModel(undefined);
-        }
+        setColumnsModel(undefined);
+        //dispatchValueChange({groupKey: gkey, fieldKey: 'columnsModel', value: undefined});
         loadTapColumns(requestServiceUrl, requestSchemaName, requestTableName).then((columnsModel) => {
             if (serviceUrlRef.current !== requestServiceUrl || schemaRef.current !== requestSchemaName || tableRef.current !== requestTableName){
                 // processing a stale request
