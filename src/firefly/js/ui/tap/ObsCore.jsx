@@ -33,7 +33,9 @@ import {getAppOptions} from 'firefly/api/ApiUtil';
 import {floatValidator, minimumPositiveFloatValidator, maximumPositiveFloatValidator} from 'firefly/util/Validate';
 import toFloat from 'validator/es/lib/toFloat';
 import {dispatchValueChange} from 'firefly/fieldGroup/FieldGroupCntlr';
+import {Logger} from 'firefly/util/Logger';
 
+const logger = Logger('ObsCore');
 
 const fakeValidator = () => ({valid: true, message: '' });
 
@@ -178,7 +180,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                     siaConstraints.push(...constraintsResult.siaConstraints);
                 }
             } else if (!constraintsResult.adqlConstraint) {
-                console.log(`invalid ${panelTitle} adql constraints`);  // FIXME: remove before merge
+                logger.warn(`invalid ${panelTitle} adql constraints`);
             }
         }
         return {
@@ -376,7 +378,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                     siaConstraints.push(...constraintsResult.siaConstraints);
                 }
             } else if (!constraintsResult.adqlConstraint) {
-                console.log(`invalid ${panelTitle} adql constraints`);  // FIXME: remove before merge
+                logger.warn(`invalid ${panelTitle} adql constraints`);
             }
         }
         return {
@@ -536,7 +538,7 @@ function adqlQueryRange(lowerBound, upperBound, rangeList, contains=false) {
                     );
                 }
             } else {
-                console.log('FIXME: Boundaries contain an infinite range');
+                logger.warn('Boundaries contain an infinite range');
             }
         } else {
             if (!upperValue.endsWith('Inf')) {
@@ -722,7 +724,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                     siaConstraints.push(...constraintsResult.siaConstraints);
                 }
             } else if (!constraintsResult.adqlConstraint) {
-                console.log(`invalid ${panelTitle} adql constraints`);  // FIXME: remove before merge
+                logger.warn(`invalid ${panelTitle} adql constraints`);
             }
         }
         return {
