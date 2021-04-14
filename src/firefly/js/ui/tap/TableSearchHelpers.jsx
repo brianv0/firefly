@@ -193,7 +193,7 @@ export const isPanelChecked = (panelTitle, fields) => {
  * Encapsulates the logic to inspect a panel's check, field validity,
  * and update everything accordingly.
  */
-export const updatePanelFields = (fieldsValidity, valid, fields, newFields, panelTitle) => {
+export const updatePanelFields = (fieldsValidity, valid, fields, newFields, panelTitle, defaultMessage) => {
     const panelPrefix = getPanelPrefix(panelTitle);
     const panelCheckId = `${panelPrefix}Check`;
     const panelFieldKey = `${panelPrefix}SearchPanel`;
@@ -202,7 +202,7 @@ export const updatePanelFields = (fieldsValidity, valid, fields, newFields, pane
         const panelActive = get(fields, [panelCheckId, 'value']) === panelTitle;
         const panelValid = get(fields, [panelFieldKey, 'panelValid'], false);
         for (const [key, validity] of fieldsValidity.entries()) {
-            Object.assign(newFields[key], validity);
+            newFields[key].validity = validity;
             if (has(newFields[key], 'nullAllowed')) {
                 newFields[key].nullAllowed = !panelActive;
                 newFields[key].valid = panelActive ? validity.valid : true;
@@ -211,9 +211,9 @@ export const updatePanelFields = (fieldsValidity, valid, fields, newFields, pane
 
         Object.assign(newFields[panelFieldKey], {
             'panelValid': valid,
-            'panelMessage': firstMessage
+            'panelMessage': firstMessage || (!valid && defaultMessage)
         });
-        if (valid && !panelValid) {
+        if (valid && !panelValid && [...fieldsValidity.keys()].length > 0) {
             set(newFields, [panelCheckId, 'value'], panelTitle);
         }
     }
