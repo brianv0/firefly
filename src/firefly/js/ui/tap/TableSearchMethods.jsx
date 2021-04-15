@@ -86,7 +86,6 @@ const fieldsMap = {[Spatial]: {
                         [CenterColumns]: {label: 'Position Columns'},
                         [CenterLonColumns]: {label: 'Longitude Column'},
                         [CenterLatColumns]: {label: 'Latitude Column'},
-                        [SpatialMethod]: {label: 'Search Method'},
                         [ServerParams.USER_TARGET_WORLD_PT]: {label: 'Coordinates or Object Name'},
                         [RadiusSize]: {label: 'Radius'},
                         [PolygonCorners]:  {label: 'Coordinates'}},
@@ -341,10 +340,10 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
                     fieldKey={'spatialRegionOperation'}
                     options={
                         [
-                            {label: 's_region contains point', value: 'contains_point'},
-                            {label: 's_region contains shape', value: 'contains_shape'},
-                            {label: 's_region is contained by shape', value: 'contained_by_shape'},
-                            {label: 's_region intersects shape', value: 'intersects'},
+                            {label: 'Observation boundary contains point', value: 'contains_point'},
+                            {label: 'Observation boundary contains shape', value: 'contains_shape'},
+                            {label: 'Observation boundary is contained by shape', value: 'contained_by_shape'},
+                            {label: 'Observation boundary intersects shape', value: 'intersects'},
                             {label: 'central point (s_ra, s_dec) is contained by shape', value: 'center_contained'},
                         ]}
                     initialState={{
@@ -621,7 +620,7 @@ function selectSpatialSearchMethod(groupKey, fields, spatialMethod) {
                 wrapperStyle={{marginRight: '15px', padding: '8px 0 5px 0'}}
                 multiple={false}
                 tooltip={'Select spatial search method'}
-                label={getLabel(SpatialMethod, ':')}
+                label={'Shape Type:'}
                 labelWidth={LableSaptail}
                 initialState={{
                     value: TapSpatialSearchMethod.Cone.value
