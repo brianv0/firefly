@@ -22,7 +22,7 @@ import {
     onChangeTimeMode,
     getTimeInfo,
     checkField,
-    updatePanelFields, isPanelChecked, getPanelPrefix
+    updatePanelFields, isPanelChecked, getPanelPrefix, SmallFloatNumericWidth
 } from 'firefly/ui/tap/TableSearchHelpers';
 import {ColsShape} from '../../charts/ui/ColumnOrExpression';
 import {convertISOToMJD, validateDateTime, validateMJD} from 'firefly/ui/DateTimePickerField';
@@ -302,11 +302,11 @@ ObsCoreSearch.propTypes = {
 
 
 export function ExposureDurationSearch({cols, groupKey, fields, useConstraintReducer, useFieldGroupReducer}) {
-    const panelTitle = 'Exposure';
-    const panelValue = panelTitle;
+    const panelTitle = 'Timing';
+    const panelValue = 'Exposure';
     const panelPrefix = getPanelPrefix(panelValue);
 
-    const [rangeType, setRangeType] = useState('range');
+    const [rangeType, setRangeType] = useState('since');
     const [expTimeMode, setExpTimeMode] = useState(ISO);
     const [expMin, setExpMin] = useState();
     const [expMax, setExpMax] = useState();
@@ -373,6 +373,9 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                     if (checkField('exposureSinceValue', fields, false, fieldsValidity).valid) {
                         let sinceMillis;
                         switch (exposureSinceOptions.value) {
+                            case 'minutes':
+                                sinceMillis = toFloat(exposureSinceValue.value) * 60 * 1000;
+                                break;
                             case 'hours':
                                 sinceMillis = toFloat(exposureSinceValue.value) * 60 * 60 * 1000;
                                 break;
@@ -455,33 +458,36 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
 
     useFieldGroupReducer('exposure', onChange);
 
-    const showExpsoureRange = () => {
-        const timeOptions = [{label: 'ISO', value: ISO},
-            {label: 'MJD', value: MJD}];
-        const exposureRangeOptions = [{label: 'Range', value: 'range'},
-            {label: 'Completed in the Last', value: 'since'}];
+    const showExposureRange = () => {
+        const timeOptions = [{label: 'UTC date/times (ISO format)', value: ISO},
+            {label: 'MJD values', value: MJD}];
+        const exposureRangeOptions = [{label: 'Completed in the Last...', value: 'since'}, {label: 'Overlapping specified range', value: 'range'}];
         const icon = 'calendar';
 
         //  radio field is styled with padding right in consistent with the label part of 'temporal columns' entry
         return (
             <div style={{display: 'block', marginTop: '5px'}}>
-                <RadioGroupInputField
+                <ListBoxInputField
                     fieldKey={'exposureRangeType'}
                     options={exposureRangeOptions}
                     alignment={'horizontal'}
+                    label={'Time of Observation'}
+                    labelWidth={LableSaptail}
                 />
                 <div>
                     {rangeType === 'range' &&
-                    <div style={{display: 'block', marginLeft: LeftInSearch, marginTop: 5}}>
+                    <div style={{display: 'block', marginLeft: LeftInSearch, marginTop: 10}}>
                         <RadioGroupInputField
                             fieldKey={'exposureTimeMode'}
                             options={timeOptions}
                             alignment={'horizontal'}
                             wrapperStyle={{width: LabelWidth, paddingRight: '4px'}}
                             initialState={{value: ISO}}
+                            label={'Use:'}
+                            labelWidth={32 /* FIXME: Not sure if this is best */}
                             tooltip='Select time mode'
                         />
-                        <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5}}>
+                        <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 10}}>
                             <div title='Start Time'
                                  style={{display: 'inline-block', paddingRight: '4px', width: '106px'}}>Start Time
                             </div>
@@ -543,19 +549,20 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                         <ValidationField
                             fieldKey={'exposureSinceValue'} // FIXME: Introduce SinceValue or similar
                             groupKey={skey}
-                            // feedbackStyle={{height: 100}}
-                            inputWidth={Width_Column}
-                            label={'Finished in the last:'}
-                            labelWidth={LableSaptail}
+                            size={SmallFloatNumericWidth}
                             inputStyle={{overflow: 'auto', height: 16}}
                             validator={fakeValidator}
+                            wrapperStyle={{marginLeft: LableSaptail, paddingLeft: 4 /* Extra padding because there's no label */, paddingBottom: 5}}
                         />
                         <ListBoxInputField
                             fieldKey={'exposureSinceOptions'} // FIXME: Introduce SinceOptions
-                            options={[{label: 'Hours', value: 'hours'}, {label: 'Days', value: 'days'}, {
-                                label: 'Years',
-                                value: 'years'
-                            }]}
+                            options={[
+                                {label: 'Minutes', value: 'minutes'},
+                                {label: 'Hours', value: 'hours'},
+                                {label: 'Days', value: 'days'},
+                                {label: 'Years',value: 'years'}
+                            ]}
+                            initialState={{value: 'hours'}}
                         />
                     </div>
                     }
@@ -563,10 +570,10 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                         <ValidationField
                             fieldKey={'exposureLengthMin'}
                             groupKey={skey}
-                            inputWidth={Width_Column}
+                            size={SmallFloatNumericWidth}
                             inputStyle={{overflow: 'auto', height: 16}}
-                            label={'Exposure time:'}
-                            tooltip={'t_exptime, in seconds, must be greater than this value'}
+                            label={'Exposure Duration:'}
+                            tooltip={'Cumulative shutter-open exposure duration in seconds'}
                             labelWidth={LableSaptail}
                             validator={minimumPositiveFloatValidator('Minimum Exposure Length')}
                             placeholder={'-Inf'}
@@ -574,9 +581,9 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                         <ValidationField
                             fieldKey={'exposureLengthMax'}
                             groupKey={skey}
-                            inputWidth={Width_Column}
+                            size={SmallFloatNumericWidth}
                             inputStyle={{overflow: 'auto', height: 16}}
-                            tooltip={'t_exptime, in seconds, must be lesser than this value'}
+                            tooltip={'Cumulative shutter-open exposure duration in seconds (upper bound)'}
                             validator={maximumPositiveFloatValidator('Maximum Exposure Length')}
                             placeholder={'+Inf'}
                         />
@@ -604,7 +611,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
             wrapperStyle={{marginBottom: 15}}
             headerStyle={HeaderFont}>
             <div style={{marginTop: 5}}>
-                {showExpsoureRange()}
+                {showExposureRange()}
             </div>
         </FieldGroupCollapsible>
     );
@@ -669,8 +676,8 @@ function siaQueryRange(keyword, rangeList) {
 }
 
 export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintReducer, useFieldGroupReducer}) {
-    const panelTitle = 'Wavelength';
-    const panelValue = panelTitle;
+    const panelTitle = 'Spectral Coverage';
+    const panelValue = 'Wavelength';
     const panelPrefix = getPanelPrefix(panelValue);
     const [selectionType, setSelectionType] = useState('filter');
     const [rangeType, setRangeType] = useState('contains');
@@ -678,7 +685,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
 
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
 
-    const obsCoreWavelengthExample = <div style={{padding: '5px'}}>
+    const obsCoreWavelengthExample = <div style={{marginTop: '5px'}}>
         Select observations whose wavelength coverage:
         <br />
     </div>;
@@ -852,22 +859,26 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                     wrapperStyle={{marginTop: '5px'}}
                 />
                 {filterDefinitions && selectionType === 'filter' &&
-                    filterDefinitions.map( (filterDefinition) => {
-                        return (
-                            <CheckboxGroupInputField
-                                key={'filter' + filterDefinition.name + 'Key'}
-                                fieldKey={'filter' + filterDefinition.name}
-                                options={filterDefinition.options}
-                                alignment='horizontal'
-                                wrapperStyle={{whiteSpace: 'normal', marginTop: '5px'}}
-                                label={filterDefinition.name}
-                                labelWidth={85}
-                            />);
-                    })
+                <div style={{marginTop: '5px'}}>
+                        <span>Require coverage at the approximate center of these filters:</span>
+                        {filterDefinitions.map( (filterDefinition) => {
+                            return (
+                                <CheckboxGroupInputField
+                                    key={'filter' + filterDefinition.name + 'Key'}
+                                    fieldKey={'filter' + filterDefinition.name}
+                                    options={filterDefinition.options}
+                                    alignment='horizontal'
+                                    wrapperStyle={{whiteSpace: 'normal', marginTop: '5px'}}
+                                    label={filterDefinition.name}
+                                    labelWidth={85}
+                                />);
+                            })
+                        }
+                    </div>
                 }
                 {selectionType === 'numerical' && obsCoreWavelengthExample}
                 {selectionType === 'numerical' &&
-                <div>
+                <div style={{marginTop: '5px'}}>
                     <ListBoxInputField
                         fieldKey={'obsCoreWavelengthRangeType'}
                         options={
@@ -886,7 +897,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                             <ValidationField
                                 fieldKey={'obsCoreWavelengthContains'}
                                 groupKey={skey}
-                                inputWidth={Width_Column}
+                                size={SmallFloatNumericWidth}
                                 inputStyle={{overflow: 'auto', height: 16}}
                                 validator={floatValidator(0,100e15, 'Wavelength')}
                             />
@@ -897,7 +908,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                             <ValidationField
                                 fieldKey={'obsCoreWavelengthMinRange'}
                                 groupKey={skey}
-                                inputWidth={Width_Column}
+                                size={SmallFloatNumericWidth}
                                 inputStyle={{overflow:'auto', height:16}}
                                 validator={minimumPositiveFloatValidator('Min Wavelength')}
                                 placeholder={'-Inf'}
@@ -905,7 +916,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                             <ValidationField
                                 fieldKey={'obsCoreWavelengthMaxRange'}
                                 groupKey={skey}
-                                inputWidth={Width_Column}
+                                size={SmallFloatNumericWidth}
                                 inputStyle={{overflow:'auto', height:16}}
                                 validator={maximumPositiveFloatValidator('Max Wavelength')}
                                 placeholder={'+Inf'}

@@ -22,6 +22,7 @@ export const LabelWidth = 106;
 export const LableSaptail = 110;
 export const SpatialWidth = 440;
 export const Width_Column = 175;
+export const SmallFloatNumericWidth = 12;
 export const Width_Time_Wrapper = Width_Column + 30;
 
 export const  FROM = 0;
