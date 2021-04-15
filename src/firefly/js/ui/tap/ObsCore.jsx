@@ -78,6 +78,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
         'Visibility': 'visibility',
         'Event': 'event',
         'Measurements': 'measurements',
+        '(null)': 'null',
     });
 
     const calibrationOptions = () => {
@@ -99,18 +100,22 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
     const makeConstraints = function(fields, fieldsValidity) {
         const adqlConstraints = [];
         const siaConstraints = [];
-        const siaConstraintErrors = new Map();
+        const siaConstraintErrors = [];
 
         const checkObsCoreField = (key, nullAllowed) => {
             return checkField(key, fields, true, fieldsValidity);
         };
 
-        const multiConstraint = (value, columnName, siaName, quote) => {
+        const multiConstraint = (value, columnName, siaName, quote, checkForNull) => {
             const multiConstraint = [];
             const _siaConstraints = [];
             const valueList = value.split(',');
             valueList.forEach((value) => {
-                multiConstraint.push(`${columnName} = ${quote}${value}${quote}`);
+                if (checkForNull && value === 'null'){
+                    multiConstraint.push(`${columnName} IS NULL`);
+                } else {
+                    multiConstraint.push(`${columnName} = ${quote}${value}${quote}`);
+                }
                 _siaConstraints.push(`${siaName}=${value}`);
             });
             let adqlConstraint = multiConstraint.join(' OR ');
@@ -138,9 +143,14 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
         }
         checkObsCoreField('obsCoreTypeSelection', true);
         if (obsCoreTypeSelection.value !== '') {
-            const mcResult = multiConstraint(obsCoreTypeSelection.value, 'dataproduct_type', 'DPTYPE', '\'');
+            const mcResult = multiConstraint(obsCoreTypeSelection.value, 'dataproduct_type', 'DPTYPE', '\'', true);
             adqlConstraints.push(mcResult.adqlConstraint);
-            siaConstraints.push(...mcResult.siaConstraints);
+            const siaErrorFields = ['visibility', 'event', 'null'];
+            if (siaErrorFields.some((v) => obsCoreTypeSelection.value.indexOf(v) >= 0)){
+                siaConstraintErrors.push(`values ${siaErrorFields} not valid SIA DPTYPE options`);
+            } else {
+                siaConstraints.push(...mcResult.siaConstraints);
+            }
         }
         checkObsCoreField('obsCoreInstrumentName', true);
         if (obsCoreInstrumentName.value?.length > 0) {
@@ -152,7 +162,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
             checkObsCoreField('obsCoreSubType', true);
             if (obsCoreSubType.value?.length > 0) {
                 adqlConstraints.push(`dataproduct_subtype = '${obsCoreSubType.value}'`);
-                siaConstraintErrors.set('obsCoreSubType', {valid: false, message: 'Not able to translate dataproduct_subtype to SIAV2 query'});
+                siaConstraintErrors.push('Not able to translate dataproduct_subtype to SIAV2 query');
             }
         }
         const adqlConstraint = adqlConstraints.join(' AND ');
@@ -171,7 +181,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
         const fieldsValidity = new Map();
         const panelActive = isPanelChecked(panelTitle, panelPrefix, fields);
         const siaConstraints = [];
-        const siaConstraintErrors = new Map();
+        const siaConstraintErrors = [];
         let adqlConstraint = '';
         const adqlConstraintErrors = [];
         const constraintsResult = makeConstraints(fields, fieldsValidity, panelActive);
@@ -185,6 +195,9 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                 }
                 if  (constraintsResult.siaConstraints?.length > 0){
                     siaConstraints.push(...constraintsResult.siaConstraints);
+                }
+                if  (constraintsResult.siaConstraintErrors?.length > 0){
+                    siaConstraintErrors.push(...constraintsResult.siaConstraintErrors);
                 }
             } else if (!constraintsResult.adqlConstraint) {
                 logger.warn(`invalid ${panelTitle} adql constraints`);

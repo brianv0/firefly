@@ -229,7 +229,7 @@ const FunctionalTableSearchMethods = (props) => {
                 {constraintResults?.siaConstraints?.join('&')}
                 <br/>
                 sia errors: <br/>
-                {constraintResults?.siaConstraintErrors?.map((elem) => {elem.join(', ');})}
+                {constraintResults?.siaConstraintErrors?.map((elem) => elem.join(', ')).join('<br/>')}
                 <br/>
             </div>}
         </FieldGroup>
