@@ -239,18 +239,23 @@ const FunctionalTableSearchMethods = (props) => {
 export const TableSearchMethods = FunctionalTableSearchMethods;
 
 function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCoreEnabled, useConstraintReducer, useFieldGroupReducer}) {
-    const panelTitle = Spatial;
-    const panelPrefix = getPanelPrefix(panelTitle);
+    const panelTitle = !obsCoreEnabled ? Spatial : 'Location';
+    const panelValue = Spatial;
+    const panelPrefix = getPanelPrefix(Spatial);
     const {POSITION:worldPt, radiusInArcSec}= initArgs;
     const [spatialMethod, setSpatialMethod] = useState(TapSpatialSearchMethod.Cone.value);
     const [spatialRegionOperation, setSpatialRegionOperation] = useState('contains_shape');
     const centerColObj = formCenterColumns(columnsModel);
-    const [message, setMesage] = useState();
+    const [message, setMessage] = useState();
+
+    // useEffect(() => {
+    //     setPanelTitle(!obsCoreEnabled ? Spatial : 'Location');
+    // }, [obsCoreEnabled]);
 
     useEffect(() => {
         return FieldGroupUtils.bindToStore(groupKey, (fields) => {
-            const panelActive = getFieldVal(groupKey, SpatialCheck) === 'Spatial';
-            setMesage(panelActive ? get(fields, [SpatialPanel, PanelMessage], '') : '');
+            const panelActive = isPanelChecked(panelValue, panelPrefix, fields);
+            setMessage(panelActive ? get(fields, [`${panelPrefix}SearchPanel`, 'panelMessage'], '') : '');
             setSpatialMethod(getFieldVal(groupKey, SpatialMethod, spatialMethod));
             setSpatialRegionOperation(getFieldVal(groupKey, 'spatialRegionOperation', spatialRegionOperation));
         });
@@ -261,9 +266,9 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
 
         const onChangePolygonCoordinates = () => {
             rFields.imageCornerCalc = clone(inFields.imageCornerCalc, {value: 'user'});
-            if(!isPanelChecked(panelTitle, panelPrefix, rFields)){
-                const panelChk = 'SpatialCheck';
-                set(rFields, [panelChk, 'value'], 'Spatial');
+            if(!isPanelChecked(panelValue, panelPrefix, rFields)){
+                const panelChk = `${panelValue}Check`;
+                set(rFields, [panelChk, 'value'], panelValue);
             }
         };
 
@@ -300,19 +305,19 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
         let adqlConstraint = '';
         const adqlConstraintErrors = [];
         const constraintsResult = makeSpatialConstraints(fields, columnsModel, newFields);
-        updatePanelFields(constraintsResult.fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle, panelPrefix);
-        if (isPanelChecked(panelTitle, panelPrefix, newFields)) {
+        updatePanelFields(constraintsResult.fieldsValidity, constraintsResult.valid, fields, newFields, panelValue, panelPrefix);
+        if (isPanelChecked(panelValue, panelPrefix, newFields)) {
             if (constraintsResult.valid){
                 if (constraintsResult.adqlConstraint?.length > 0){
                     adqlConstraint = constraintsResult.adqlConstraint;
                 } else {
-                    adqlConstraintErrors.push(`Unknown error processing ${panelTitle} constraints`);
+                    adqlConstraintErrors.push(`Unknown error processing ${panelValue} constraints`);
                 }
                 if  (constraintsResult.siaConstraints?.length > 0){
                     siaConstraints.push(...constraintsResult.siaConstraints);
                 }
             } else if (!constraintsResult.adqlConstraint) {
-                logger.warn(`invalid ${panelTitle} adql constraints`);
+                logger.warn(`invalid ${panelValue} adql constraints`);
             }
         }
         return {
@@ -404,10 +409,10 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
     };
 
     return (
-        <FieldGroupCollapsible header={<Header title={Spatial}  helpID={tapHelpId('spatial')}
-                                       checkID={SpatialCheck}   message={message} enabled={Boolean(worldPt)}/>}
+        <FieldGroupCollapsible header={<Header title={panelTitle}  helpID={tapHelpId(panelPrefix)}
+                                       checkID={`${panelPrefix}Check`}  panelValue={panelValue} message={message} enabled={Boolean(worldPt)}/>}
                                initialState={{ value: 'open' }}
-                               fieldKey={SpatialPanel}
+                               fieldKey={`${panelPrefix}SearchPanel`}
                                wrapperStyle={{marginBottom: 15}}
                                headerStyle={HeaderFont}>
             <div style={{marginTop: '5px'}}>

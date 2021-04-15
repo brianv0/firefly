@@ -48,13 +48,14 @@ function timeValidator(fieldKey) {
 
 export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
     const panelTitle = 'Observation Type and Source';
-    const panelPrefix = getPanelPrefix('ObsCore');
+    const panelValue = 'ObsCore';
+    const panelPrefix = getPanelPrefix(panelValue);
 
     const [message, setMesage] = useState();
 
     useEffect(() => {
         return FieldGroupUtils.bindToStore(groupKey, (fields) => {
-            const panelActive = getFieldVal(groupKey, `${panelPrefix}Check`) === panelTitle;
+            const panelActive = getFieldVal(groupKey, `${panelPrefix}Check`) === panelValue;
             setMesage(panelActive ? get(fields, [`${panelPrefix}SearchPanel`, 'panelMessage'], '') : '');
         });
     }, []);
@@ -179,19 +180,19 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
 
     const constraintReducer = (fields, newFields) => {
         const fieldsValidity = new Map();
-        const panelActive = isPanelChecked(panelTitle, panelPrefix, fields);
+        const panelActive = isPanelChecked(panelValue, panelPrefix, fields);
         const siaConstraints = [];
         const siaConstraintErrors = [];
         let adqlConstraint = '';
         const adqlConstraintErrors = [];
         const constraintsResult = makeConstraints(fields, fieldsValidity, panelActive);
-        updatePanelFields(constraintsResult.fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle, panelPrefix);
-        if (isPanelChecked(panelTitle, panelPrefix, newFields)) {
+        updatePanelFields(constraintsResult.fieldsValidity, constraintsResult.valid, fields, newFields, panelValue, panelPrefix);
+        if (isPanelChecked(panelValue, panelPrefix, newFields)) {
             if (constraintsResult.valid){
                 if (constraintsResult.adqlConstraint?.length > 0){
                     adqlConstraint = constraintsResult.adqlConstraint;
                 } else {
-                    adqlConstraintErrors.push(`Unknown error processing ${panelTitle} constraints`);
+                    adqlConstraintErrors.push(`Unknown error processing ${panelValue} constraints`);
                 }
                 if  (constraintsResult.siaConstraints?.length > 0){
                     siaConstraints.push(...constraintsResult.siaConstraints);
@@ -200,7 +201,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                     siaConstraintErrors.push(...constraintsResult.siaConstraintErrors);
                 }
             } else if (!constraintsResult.adqlConstraint) {
-                logger.warn(`invalid ${panelTitle} adql constraints`);
+                logger.warn(`invalid ${panelValue} adql constraints`);
             }
         }
         return {
@@ -215,7 +216,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
 
     return (
         <FieldGroupCollapsible header={<Header title={panelTitle} helpID={tapHelpId(panelPrefix)}
-                                               checkID={`${panelPrefix}Check`} message={message}/>}
+                                               checkID={`${panelPrefix}Check`} panelValue={panelValue} message={message}/>}
                                initialState={{value: 'closed'}}
                                fieldKey={`${panelPrefix}SearchPanel`}
                                wrapperStyle={{marginBottom: 15}}
@@ -302,7 +303,8 @@ ObsCoreSearch.propTypes = {
 
 export function ExposureDurationSearch({cols, groupKey, fields, useConstraintReducer, useFieldGroupReducer}) {
     const panelTitle = 'Exposure';
-    const panelPrefix = getPanelPrefix(panelTitle);
+    const panelValue = panelTitle;
+    const panelPrefix = getPanelPrefix(panelValue);
 
     const [rangeType, setRangeType] = useState('range');
     const [expTimeMode, setExpTimeMode] = useState(ISO);
@@ -318,7 +320,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
             setExpMin(getFieldVal(groupKey, 'exposureMin', expMin));
             setExpMax(getFieldVal(groupKey, 'exposureMax', expMax));
             setExpLength(getFieldVal(groupKey, 'exposureLength', expLength));
-            const panelActive = getFieldVal(groupKey, `${panelPrefix}Check`) === panelTitle;
+            const panelActive = getFieldVal(groupKey, `${panelPrefix}Check`) === panelValue;
             setMesage(panelActive ? get(fields, [`${panelPrefix}SearchPanel`, 'panelMessage'], '') : '');
         });
     }, []);
@@ -421,19 +423,19 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
         let adqlConstraint;
         const siaConstraints = [];
         const siaConstraintErrors = [];
-        updatePanelFields(fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle, panelPrefix, 'at least one field must be populated');
-        if (isPanelChecked(panelTitle, panelPrefix, newFields)) {
+        updatePanelFields(fieldsValidity, constraintsResult.valid, fields, newFields, panelValue, panelPrefix, 'at least one field must be populated');
+        if (isPanelChecked(panelValue, panelPrefix, newFields)) {
             if (constraintsResult.valid) {
                 if (constraintsResult.adqlConstraint?.length > 0) {
                     adqlConstraint = constraintsResult.adqlConstraint;
                 } else {
-                    adqlConstraintErrors.push(`Unknown error processing ${panelTitle} constraints`);
+                    adqlConstraintErrors.push(`Unknown error processing ${panelValue} constraints`);
                 }
                 if (constraintsResult.siaConstraints?.length > 0) {
                     siaConstraints.push(...constraintsResult.siaConstraints);
                 }
             } else if (!constraintsResult.adqlConstraint) {
-                logger.warn(`invalid ${panelTitle} adql constraints`);
+                logger.warn(`invalid ${panelValue} adql constraints`);
             }
         }
         return {
@@ -594,6 +596,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
         <FieldGroupCollapsible
             header={<Header title={panelTitle} helpID={tapHelpId(`${panelPrefix}`)}
                             checkID={`${panelPrefix}Check`}
+                            panelValue={panelValue}
                             message={message}
             />}
             initialState={{value: 'closed'}}
@@ -667,7 +670,8 @@ function siaQueryRange(keyword, rangeList) {
 
 export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintReducer, useFieldGroupReducer}) {
     const panelTitle = 'Wavelength';
-    const panelPrefix = getPanelPrefix(panelTitle);
+    const panelValue = panelTitle;
+    const panelPrefix = getPanelPrefix(panelValue);
     const [selectionType, setSelectionType] = useState('filter');
     const [rangeType, setRangeType] = useState('contains');
     const [message, setMesage] = useState();
@@ -683,7 +687,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
         return FieldGroupUtils.bindToStore(groupKey, (fields) => {
             setSelectionType(getFieldVal(groupKey, 'obsCoreWavelengthSelectionType', selectionType));
             setRangeType(getFieldVal(groupKey, 'obsCoreWavelengthRangeType', rangeType));
-            const panelActive = getFieldVal(groupKey, `${panelPrefix}Check`) === panelTitle;
+            const panelActive = getFieldVal(groupKey, `${panelPrefix}Check`) === panelValue;
             setMesage(panelActive ? get(fields, [`${panelPrefix}SearchPanel`, 'panelMessage'], '') : '');
         });
     }, []);
@@ -807,19 +811,19 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
             siaConstraintErrors
         };
         let adqlConstraint;
-        updatePanelFields(fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle, panelPrefix);
-        if (isPanelChecked(panelTitle, panelPrefix, newFields)) {
+        updatePanelFields(fieldsValidity, constraintsResult.valid, fields, newFields, panelValue, panelPrefix);
+        if (isPanelChecked(panelValue, panelPrefix, newFields)) {
             if (constraintsResult.valid){
                 if (constraintsResult.adqlConstraint?.length > 0){
                     adqlConstraint = constraintsResult.adqlConstraint;
                 } else {
-                    adqlConstraintErrors.push(`Unknown error processing ${panelTitle} constraints`);
+                    adqlConstraintErrors.push(`Unknown error processing ${panelValue} constraints`);
                 }
                 if  (constraintsResult.siaConstraints?.length > 0){
                     siaConstraints.push(...constraintsResult.siaConstraints);
                 }
             } else if (!constraintsResult.adqlConstraint) {
-                logger.warn(`invalid ${panelTitle} adql constraints`);
+                logger.warn(`invalid ${panelValue} adql constraints`);
             }
         }
         return {
@@ -835,6 +839,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
     return (
         <FieldGroupCollapsible header={<Header title={panelTitle} helpID={tapHelpId(panelPrefix)}
                                                checkID={`${panelPrefix}Check`}
+                                               panelValue={panelValue}
                                                message={message}/>}
                                initialState={{ value: 'closed' }}
                                fieldKey={`${panelPrefix}SearchPanel`}

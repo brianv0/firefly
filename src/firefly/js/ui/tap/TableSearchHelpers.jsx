@@ -216,7 +216,7 @@ export const updatePanelFields = (fieldsValidity, valid, fields, newFields, pane
     }
 };
 
-export function Header({title, helpID='', checkID, message, enabled=false}) {
+export function Header({title, helpID='', checkID, message, enabled=false, panelValue=undefined}) {
     const tooltip = title + ' search is included in the query if checked';
     return (
         <div style={{display: 'inline-flex', alignItems: 'center'}} title={title + ' search'}>
@@ -225,10 +225,10 @@ export function Header({title, helpID='', checkID, message, enabled=false}) {
                     key={checkID}
                     fieldKey={checkID}
                     initialState={{
-                        value: enabled ?title:'',
+                        value: enabled ? panelValue || title:'',
                         label: ''
                     }}
-                    options={[{label:'', value: title}]}
+                    options={[{label:'', value: panelValue || title}]}
                     alignment='horizontal'
                     wrapperStyle={{whiteSpace: 'norma'}}
                 />
