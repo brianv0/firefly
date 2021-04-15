@@ -90,11 +90,10 @@ function handleOnChange(ev, params, fireValueChange) {
 
 
 function checkForUndefined(v,props) {
-    const optionContain = (vArr) => vArr.reduce((v) => props.options.find ( (op) => op.value === v ));
-    const vArr = getCurrentValueArr(v);
+    const multiple = props.multiple || false;
 
     return isEmpty(props.options) ? v :
-            (!v ? props.options[0].value : (optionContain(vArr) ? v : v));
+            (!v && !multiple ? props.options[0].value : v);
 }
 
 
@@ -102,7 +101,7 @@ export const ListBoxInputField= memo( (props) => {
     const {viewProps, fireValueChange}=  useFieldGroupConnector({...props, confirmValue:checkForUndefined});
     const newProps= {
         ...viewProps,
-        value: convertValue(viewProps.value, viewProps.options),
+        value: !viewProps.multiple ? convertValue(viewProps.value, viewProps.options) : viewProps.value,
         onChange: (ev) => handleOnChange(ev,viewProps, fireValueChange)
     };
     return (<ListBoxInputFieldView {...newProps} />);
