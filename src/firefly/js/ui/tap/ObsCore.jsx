@@ -75,6 +75,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
         'Spectrum': 'spectrum',
         'SED': 'sed',
         'Timeseries': 'timeseries',
+        'Visibility': 'visibility',
         'Event': 'event',
         'Measurements': 'measurements',
     });
@@ -230,7 +231,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                         labelWidth={LableSaptail}
                         initialState={{value: 'image'}}
                         options={typeOptions()}
-                        wrapperStyle={{marginRight: '15px', padding: '8px 0 5px 0'}}
+                        wrapperStyle={{marginRight: '15px', padding: '8px 0 5px 0', display: 'flex'}}
                         multiple={true}
                     />
                 </div>
