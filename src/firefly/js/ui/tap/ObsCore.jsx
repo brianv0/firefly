@@ -212,18 +212,6 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                 display: 'flex', flexDirection: 'column', flexWrap: 'no-wrap',
                 width: SpatialWidth, marginTop: 5
             }}>
-                <div style={{marginTop: '5px'}}>
-                    <ValidationField
-                        fieldKey={'obsCoreCollection'}
-                        groupKey={skey}
-                        inputWidth={Width_Column}
-                        inputStyle={{overflow: 'auto', height: 16}}
-                        tooltip={'Select ObsCore Collection name'}
-                        label={'Collection:'}
-                        labelWidth={LableSaptail}
-                        validator={fakeValidator}
-                    />
-                </div>
                 <div style={{display: 'flex', flexDirection: 'column', marginTop: '5px'}}>
                     <CheckboxGroupInputField
                         fieldKey={'obsCoreCalibrationSelection'}
@@ -237,8 +225,8 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                 <div style={{display: 'flex', flexDirection: 'column'}}>
                     <ListBoxInputField
                         fieldKey={'obsCoreTypeSelection'}
-                        tooltip={'Select ObsCore Dataproduct Type'}
-                        label={'Dataproduct Type:'}
+                        tooltip={'Select ObsCore Data Product Type'}
+                        label={'Data Product Type:'}
                         labelWidth={LableSaptail}
                         initialState={{value: 'image'}}
                         options={typeOptions()}
@@ -258,14 +246,26 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                         validator={fakeValidator}
                     />
                 </div>
+                <div style={{marginTop: '5px'}}>
+                    <ValidationField
+                        fieldKey={'obsCoreCollection'}
+                        groupKey={skey}
+                        inputWidth={Width_Column}
+                        inputStyle={{overflow: 'auto', height: 16}}
+                        tooltip={'Select ObsCore Collection Name'}
+                        label={'Collection:'}
+                        labelWidth={LableSaptail}
+                        validator={fakeValidator}
+                    />
+                </div>
                 {hasSubType && <div style={{marginTop: '5px'}}>
                     <ValidationField
                         fieldKey={'obsCoreSubType'}
                         groupKey={skey}
                         inputWidth={Width_Column}
                         inputStyle={{overflow: 'auto', height: 16}}
-                        tooltip={'Select ObsCore Dataproduct Subtype name'}
-                        label={'Dataproduct Subtype:'}
+                        tooltip={'Select ObsCore Dataproduct Subtype Name'}
+                        label={'Data Product Subtype:'}
                         labelWidth={LableSaptail}
                         validator={fakeValidator}
                     />
