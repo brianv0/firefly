@@ -169,12 +169,12 @@ function TapSearchPanelComponents({initArgs, serviceUrl, onTapServiceOptionSelec
     };
 
     const options = [
-        {label: 'Single Table (UI assisted) ', value: 'basic'},
-        {label: 'Edit ADQL (advanced)', value: 'adql'}
+        {label: 'Single Table (UI assisted) ', value: 'basic', tooltip: 'Search a single table using a GUI query builder'},
+        {label: 'Edit ADQL (advanced)', value: 'adql', tooltip: 'Enter or edit directly an ADQL query; supports complex queries including JOINs'}
     ];
 
     if (obsCoreEnabled) {
-        options.push({label: 'ObsCore', value: 'obscore'});
+        options.push({label: 'Image Search (ObsTAP)', value: 'obscore', tooltip: 'Search the ObsTAP image metadata on this service with a specialized GUI query builder'});
     }
 
     return (
