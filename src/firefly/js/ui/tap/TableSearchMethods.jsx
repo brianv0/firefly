@@ -240,6 +240,7 @@ export const TableSearchMethods = FunctionalTableSearchMethods;
 
 function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCoreEnabled, useConstraintReducer, useFieldGroupReducer}) {
     const panelTitle = Spatial;
+    const panelPrefix = getPanelPrefix(panelTitle);
     const {POSITION:worldPt, radiusInArcSec}= initArgs;
     const [spatialMethod, setSpatialMethod] = useState(TapSpatialSearchMethod.Cone.value);
     const [spatialRegionOperation, setSpatialRegionOperation] = useState('contains_shape');
@@ -260,7 +261,7 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
 
         const onChangePolygonCoordinates = () => {
             rFields.imageCornerCalc = clone(inFields.imageCornerCalc, {value: 'user'});
-            if(!isPanelChecked('Spatial', rFields)){
+            if(!isPanelChecked(panelTitle, panelPrefix, rFields)){
                 const panelChk = 'SpatialCheck';
                 set(rFields, [panelChk, 'value'], 'Spatial');
             }
@@ -299,8 +300,8 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
         let adqlConstraint = '';
         const adqlConstraintErrors = [];
         const constraintsResult = makeSpatialConstraints(fields, columnsModel, newFields);
-        updatePanelFields(constraintsResult.fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle);
-        if (isPanelChecked(panelTitle, newFields)) {
+        updatePanelFields(constraintsResult.fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle, panelPrefix);
+        if (isPanelChecked(panelTitle, panelPrefix, newFields)) {
             if (constraintsResult.valid){
                 if (constraintsResult.adqlConstraint?.length > 0){
                     adqlConstraint = constraintsResult.adqlConstraint;
@@ -523,12 +524,12 @@ function TemporalSearch({cols, columnsModel, groupKey, fields, useConstraintRedu
             const {timeOptions} = inFields;
             const targetKey = fieldKey.substring(0, fieldKey.indexOf('Picker'));
             onChangeDateTimePicker(value, inFields, rFields, targetKey, fieldKey, timeOptions);
-            if(!isPanelChecked(Temporal, rFields)){
+            if(!isPanelChecked(Temporal, panelPrefix, rFields)){
                 set(rFields, [TemporalCheck, 'value'], Temporal);
             }
         } else if (fieldKey === TemporalColumns) {
             if (inFields[TemporalColumns]?.value?.length){
-                if(!isPanelChecked(Temporal, rFields)){
+                if(!isPanelChecked(Temporal, panelPrefix, rFields)){
                     set(rFields, [TemporalCheck, 'value'], Temporal);
                 }
             }
@@ -545,8 +546,8 @@ function TemporalSearch({cols, columnsModel, groupKey, fields, useConstraintRedu
         const siaConstraintErrors = [];
         // Process constraints because we also do validation
         const constraintsResult = makeTemporalConstraints(fields, columnsModel, newFields);
-        updatePanelFields(constraintsResult.fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle);
-        if (isPanelChecked(panelTitle, newFields)) {
+        updatePanelFields(constraintsResult.fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle, panelPrefix);
+        if (isPanelChecked(panelTitle, panelPrefix, newFields)) {
             if (constraintsResult.valid){
                 if (constraintsResult.adqlConstraint?.length > 0){
                     adqlConstraint = constraintsResult.adqlConstraint;
@@ -557,7 +558,7 @@ function TemporalSearch({cols, columnsModel, groupKey, fields, useConstraintRedu
                     siaConstraints.push(...constraintsResult.siaConstraints);
                 }
             } else if (!constraintsResult.adqlConstraint) {
-                console.log(`invalid ${panelTitle} adql constraints`);  // FIXME: remove before merge
+                logger.warn(`invalid ${panelTitle} adql constraints`);
             }
         }
         return {

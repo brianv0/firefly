@@ -47,8 +47,8 @@ function timeValidator(fieldKey) {
 }
 
 export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
-    const panelTitle = 'ObsCore';
-    const panelPrefix = getPanelPrefix(panelTitle);
+    const panelTitle = 'Observation Type and Source';
+    const panelPrefix = getPanelPrefix('ObsCore');
 
     const [message, setMesage] = useState();
 
@@ -168,14 +168,14 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
 
     const constraintReducer = (fields, newFields) => {
         const fieldsValidity = new Map();
-        const panelActive = isPanelChecked(panelTitle, fields);
+        const panelActive = isPanelChecked(panelTitle, panelPrefix, fields);
         const siaConstraints = [];
         const siaConstraintErrors = new Map();
         let adqlConstraint = '';
         const adqlConstraintErrors = [];
         const constraintsResult = makeConstraints(fields, fieldsValidity, panelActive);
-        updatePanelFields(constraintsResult.fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle);
-        if (isPanelChecked(panelTitle, newFields)) {
+        updatePanelFields(constraintsResult.fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle, panelPrefix);
+        if (isPanelChecked(panelTitle, panelPrefix, newFields)) {
             if (constraintsResult.valid){
                 if (constraintsResult.adqlConstraint?.length > 0){
                     adqlConstraint = constraintsResult.adqlConstraint;
@@ -407,8 +407,8 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
         let adqlConstraint;
         const siaConstraints = [];
         const siaConstraintErrors = [];
-        updatePanelFields(fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle, 'at least one field must be populated');
-        if (isPanelChecked(panelTitle, newFields)) {
+        updatePanelFields(fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle, panelPrefix, 'at least one field must be populated');
+        if (isPanelChecked(panelTitle, panelPrefix, newFields)) {
             if (constraintsResult.valid) {
                 if (constraintsResult.adqlConstraint?.length > 0) {
                     adqlConstraint = constraintsResult.adqlConstraint;
@@ -793,8 +793,8 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
             siaConstraintErrors
         };
         let adqlConstraint;
-        updatePanelFields(fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle);
-        if (isPanelChecked(panelTitle, newFields)) {
+        updatePanelFields(fieldsValidity, constraintsResult.valid, fields, newFields, panelTitle, panelPrefix);
+        if (isPanelChecked(panelTitle, panelPrefix, newFields)) {
             if (constraintsResult.valid){
                 if (constraintsResult.adqlConstraint?.length > 0){
                     adqlConstraint = constraintsResult.adqlConstraint;

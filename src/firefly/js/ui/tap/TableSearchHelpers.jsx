@@ -182,8 +182,7 @@ export const getPanelPrefix = (panelTitle) => {
     return panelTitle[0].toLowerCase() + panelTitle.substr(1);
 };
 
-export const isPanelChecked = (panelTitle, fields) => {
-    const panelPrefix = getPanelPrefix(panelTitle);
+export const isPanelChecked = (panelTitle, panelPrefix, fields) => {
     const panelCheckId = `${panelPrefix}Check`;
     return get(fields, [panelCheckId, 'value' ]) === panelTitle;
 };
@@ -192,8 +191,7 @@ export const isPanelChecked = (panelTitle, fields) => {
  * Encapsulates the logic to inspect a panel's check, field validity,
  * and update everything accordingly.
  */
-export const updatePanelFields = (fieldsValidity, valid, fields, newFields, panelTitle, defaultMessage) => {
-    const panelPrefix = getPanelPrefix(panelTitle);
+export const updatePanelFields = (fieldsValidity, valid, fields, newFields, panelTitle, panelPrefix, defaultMessage) => {
     const panelCheckId = `${panelPrefix}Check`;
     const panelFieldKey = `${panelPrefix}SearchPanel`;
     const firstMessage = Array.from(fieldsValidity.values()).find((v) => !v.valid)?.message ?? defaultMessage;
