@@ -76,6 +76,9 @@ const TimeOptions = 'timeOptions';
 
 const ConstraintResults = 'constraintResults';
 
+// Aligns with padding of Target
+const SpatialLableSaptail = LableSaptail + 45 /* padding of target */ - 4 /* padding of label */;
+
 
 const CrtColumnsModel = 'crtColumnsModel';
 
@@ -356,18 +359,18 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
                 <div style={{marginTop: '5px'}}>
                     {spatialRegionOperation !== 'contains_point' && doSpatialSearch()}
                     {spatialRegionOperation === 'contains_point' &&
-                        <div style={{height: 70, display:'flex', justifyContent: 'flex-start', alignItems: 'center', margienTop: '5px'}}>
-                            <TargetPanel labelWidth={LableSaptail} groupKey={groupKey} feedbackStyle={{height: 40}}/>
+                        <div style={{marginLeft: LeftInSearch}}>
+                            {renderTargetPanel(groupKey, fields, true)}
                         </div>
                     }
-                    </div>
+                </div>
             </div>
         );
     };
 
     const showCenterColumns = () => {
         return (
-            <div style={{marginLeft: LeftInSearch, marginTop: '5px'}}>
+            <div style={{marginTop: '5px'}}>
                 <ColumnFld fieldKey={CenterLonColumns}
                            groupKey={groupKey}
                            cols={cols}
@@ -376,7 +379,7 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
                            initValue={centerColObj.lon}
                            tooltip={'Center longitude column for spatial search'}
                            label={getLabel(CenterLonColumns, ':')}
-                           labelWidth={LabelWidth}
+                           labelWidth={SpatialLableSaptail}
                            validator={getColValidator(cols, false, false)}
                 />
                 <div style={{marginTop: 5}}>
@@ -388,7 +391,7 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
                                initValue={centerColObj.lat}
                                tooltip={'Center latitude column for spatial search'}
                                label={getLabel(CenterLatColumns, ':')}
-                               labelWidth={LabelWidth}
+                               labelWidth={SpatialLableSaptail}
                                validator={getColValidator(cols, false, false)}
 
                     />
@@ -400,7 +403,7 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
     const doSpatialSearch = () => {
         return (
             <div style={{display:'flex', flexDirection:'column', flexWrap:'no-wrap',
-                         width: SpatialWidth, marginLeft: `${LeftInSearch}px`, marginTop: 5}}>
+                         width: SpatialWidth, marginLeft: LeftInSearch, marginTop: 5}}>
                 {selectSpatialSearchMethod(groupKey, fields, spatialMethod)}
                 {setSpatialSearchSize(fields, radiusInArcSec, spatialMethod)}
             </div>
@@ -621,12 +624,12 @@ function selectSpatialSearchMethod(groupKey, fields, spatialMethod) {
                 multiple={false}
                 tooltip={'Select spatial search method'}
                 label={'Shape Type:'}
-                labelWidth={LableSaptail}
+                labelWidth={SpatialLableSaptail}
                 initialState={{
                     value: TapSpatialSearchMethod.Cone.value
                 }}
             />
-            {renderTargetPanel(groupKey, fields, spatialMethod)}
+            {renderTargetPanel(groupKey, fields, spatialMethod === TapSpatialSearchMethod.Cone.value)}
         </div>
     );
 }
@@ -641,14 +644,13 @@ ObsCoreSearch.propTypes = {
  * render the target panel for cone search
  * @param groupKey
  * @param fields
- * @param spatialMethod
+ * @param visible
  * @returns {null}
  */
-function renderTargetPanel(groupKey, fields, spatialMethod) {
-    const visible = (spatialMethod === TapSpatialSearchMethod.Cone.value);
+function renderTargetPanel(groupKey, fields, visible) {
     const targetSelect = () => {
         return (
-            <div style={{height: 70, display:'flex', justifyContent: 'flex-start', alignItems: 'center'}}>
+            <div style={{height: 70, display:'flex', justifyContent: 'flex-start', alignItems: 'center', marginTop: '5px'}}>
                 <TargetPanel labelWidth={LableSaptail} groupKey={groupKey} feedbackStyle={{height: 40}}/>
             </div>
         );
@@ -679,7 +681,7 @@ function setSpatialSearchSize(fields, radiusInArcSec, spatialMethod) {
 
         return (
             <div style={{marginTop: 5}}>
-                {renderPolygonDataArea(imageCornerCalc)}
+                {renderPolygonDataArea(imageCornerCalc, SpatialLableSaptail - 1 /* box border */ - 5 /* box padding */ - 5 /* label padding */)}
             </div>
         );
     } else {
@@ -699,12 +701,13 @@ function setSpatialSearchSize(fields, radiusInArcSec, spatialMethod) {
  * @returns {XML}
  */
 function radiusInField({label = getLabel(RadiusSize), radiusInArcSec=undefined }) {
+    const marginSides = 5;
     return (
         <SizeInputFields fieldKey={RadiusSize} showFeedback={true}
-                         wrapperStyle={{padding:5, margin: '5px 0px 5px 0px'}}
+                         wrapperStyle={{padding:5, margin: `${marginSides}px 0px ${marginSides}px 0px`}}
                          initialState={{
                                                unit: 'arcsec',
-                                               labelWidth : 100,
+                             labelWidth : SpatialLableSaptail - marginSides - 1 /* box border width */,
                                                nullAllowed: true,
                                                value: `${(radiusInArcSec||10)/3600}`,
                                                min: 1 / 3600,

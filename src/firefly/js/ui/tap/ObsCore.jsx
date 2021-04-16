@@ -22,7 +22,7 @@ import {
     onChangeTimeMode,
     getTimeInfo,
     checkField,
-    updatePanelFields, isPanelChecked, getPanelPrefix, SmallFloatNumericWidth
+    updatePanelFields, isPanelChecked, getPanelPrefix, SmallFloatNumericWidth, SpatialLableSaptail
 } from 'firefly/ui/tap/TableSearchHelpers';
 import {ColsShape} from '../../charts/ui/ColumnOrExpression';
 import {convertISOToMJD, validateDateTime, validateMJD} from 'firefly/ui/DateTimePickerField';
@@ -481,15 +481,15 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                             fieldKey={'exposureTimeMode'}
                             options={timeOptions}
                             alignment={'horizontal'}
-                            wrapperStyle={{width: LabelWidth, paddingRight: '4px'}}
+                            wrapperStyle={{width: LabelWidth, marginTop: 5, marginLeft: 0}}
                             initialState={{value: ISO}}
                             label={'Use:'}
                             labelWidth={32 /* FIXME: Not sure if this is best */}
                             tooltip='Select time mode'
                         />
-                        <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 10}}>
+                        <div style={{display: 'flex', marginTop: 10}}>
                             <div title='Start Time'
-                                 style={{display: 'inline-block', paddingRight: '4px', width: '106px'}}>Start Time
+                                 style={{display: 'inline-block', paddingRight: '4px', width: SpatialLableSaptail}}>Start Time
                             </div>
                             <div style={{width: Width_Time_Wrapper}}>
                                 <TimePanel
@@ -515,9 +515,9 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                                 />
                             </div>
                         </div>
-                        <div style={{display: 'flex', marginLeft: LeftInSearch, marginTop: 5}}>
+                        <div style={{display: 'flex', marginTop: 5}}>
                             <div title='End Time'
-                                 style={{display: 'inline-block', paddingRight: '4px', width: '106px'}}>End Time
+                                 style={{display: 'inline-block', paddingRight: '4px', width: SpatialLableSaptail}}>End Time
                             </div>
                             <div style={{width: Width_Time_Wrapper}}>
                                 <TimePanel
@@ -685,9 +685,9 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
 
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
 
-    const obsCoreWavelengthExample = <div style={{marginTop: '5px'}}>
+    const obsCoreWavelengthExample = <div style={{marginTop: 10}}>
         Select observations whose wavelength coverage:
-        <br />
+        <br/>
     </div>;
 
     useEffect(() => {
@@ -737,7 +737,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                         enoughMounted = false;
                     }
                 });
-                if (enoughMounted){
+                if (enoughMounted) {
                     if (rangeList.length) {
                         adqlConstraints.push(adqlQueryRange('em_min', 'em_max', rangeList, true));
                         siaConstraints.push(...siaQueryRange('BAND', rangeList));
@@ -786,8 +786,8 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                             const maxValidity = checkField('obsCoreWavelengthMaxRange', fields, true, fieldsValidity);
                             const anyHasValue = obsCoreWavelengthMinRange?.value || obsCoreWavelengthMaxRange?.value;
                             if (anyHasValue) {
-                                const minValue = obsCoreWavelengthMinRange?.value?.length === 0  ? '-Inf' : obsCoreWavelengthMinRange?.value ?? '-Inf';
-                                const maxValue = obsCoreWavelengthMaxRange?.value?.length === 0  ? '+Inf' : obsCoreWavelengthMaxRange?.value ?? '+Inf';
+                                const minValue = obsCoreWavelengthMinRange?.value?.length === 0 ? '-Inf' : obsCoreWavelengthMinRange?.value ?? '-Inf';
+                                const maxValue = obsCoreWavelengthMaxRange?.value?.length === 0 ? '+Inf' : obsCoreWavelengthMaxRange?.value ?? '+Inf';
                                 const lowerValue = minValue === '-Inf' ? minValue : `${minValue}${exponent}`;
                                 const upperValue = maxValue === '+Inf' ? maxValue : `${maxValue}${exponent}`;
                                 const rangeList = [[lowerValue, upperValue]];
@@ -820,13 +820,13 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
         let adqlConstraint;
         updatePanelFields(fieldsValidity, constraintsResult.valid, fields, newFields, panelValue, panelPrefix);
         if (isPanelChecked(panelValue, panelPrefix, newFields)) {
-            if (constraintsResult.valid){
-                if (constraintsResult.adqlConstraint?.length > 0){
+            if (constraintsResult.valid) {
+                if (constraintsResult.adqlConstraint?.length > 0) {
                     adqlConstraint = constraintsResult.adqlConstraint;
                 } else {
                     adqlConstraintErrors.push(`Unknown error processing ${panelValue} constraints`);
                 }
-                if  (constraintsResult.siaConstraints?.length > 0){
+                if (constraintsResult.siaConstraints?.length > 0) {
                     siaConstraints.push(...constraintsResult.siaConstraints);
                 }
             } else if (!constraintsResult.adqlConstraint) {
@@ -848,20 +848,21 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                                                checkID={`${panelPrefix}Check`}
                                                panelValue={panelValue}
                                                message={message}/>}
-                               initialState={{ value: 'closed' }}
+                               initialState={{value: 'closed'}}
                                fieldKey={`${panelPrefix}SearchPanel`}
                                headerStyle={HeaderFont}>
-            <div style={{display: 'flex', flexDirection: 'column', width: SpatialWidth, justifyContent: 'flex-start'}} >
+            <div style={{display: 'flex', flexDirection: 'column', width: SpatialWidth, justifyContent: 'flex-start'}}>
                 <RadioGroupInputField
                     fieldKey={'obsCoreWavelengthSelectionType'}
-                    options={[{label: 'Filter Bands', value: 'filter'}, {label: 'Numerical', value: 'numerical'}]}
+                    options={[{label: 'By Filter Band', value: 'filter'}, {label: 'By Wavelength', value: 'numerical'}]}
                     alignment={'horizontal'}
-                    wrapperStyle={{marginTop: '5px'}}
+                    wrapperStyle={{marginTop: '10px'}}
                 />
                 {filterDefinitions && selectionType === 'filter' &&
-                <div style={{marginTop: '5px'}}>
-                        <span>Require coverage at the approximate center of these filters:</span>
-                        {filterDefinitions.map( (filterDefinition) => {
+                <div style={{marginTop: '10px'}}>
+                    <span>Require coverage at the approximate center of these filters:</span>
+                    <div style={{marginLeft: LeftInSearch}}>
+                        {filterDefinitions.map((filterDefinition) => {
                             return (
                                 <CheckboxGroupInputField
                                     key={'filter' + filterDefinition.name + 'Key'}
@@ -872,13 +873,14 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                                     label={filterDefinition.name}
                                     labelWidth={85}
                                 />);
-                            })
+                        })
                         }
                     </div>
+                </div>
                 }
                 {selectionType === 'numerical' && obsCoreWavelengthExample}
                 {selectionType === 'numerical' &&
-                <div style={{marginTop: '5px'}}>
+                <div style={{marginTop: '10px', marginLeft: LeftInSearch}}>
                     <ListBoxInputField
                         fieldKey={'obsCoreWavelengthRangeType'}
                         options={
@@ -891,7 +893,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                         }}
                         multiple={false}
                     />
-                    <div style={{display: 'inline-flex', marginTop: '5px'}}>
+                    <div style={{display: 'inline-flex', marginTop: '10px'}}>
                         {rangeType === 'contains' &&
                         <div style={{display: 'flex'}}>
                             <ValidationField
@@ -899,7 +901,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                                 groupKey={skey}
                                 size={SmallFloatNumericWidth}
                                 inputStyle={{overflow: 'auto', height: 16}}
-                                validator={floatValidator(0,100e15, 'Wavelength')}
+                                validator={floatValidator(0, 100e15, 'Wavelength')}
                             />
                         </div>
                         }
@@ -909,7 +911,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                                 fieldKey={'obsCoreWavelengthMinRange'}
                                 groupKey={skey}
                                 size={SmallFloatNumericWidth}
-                                inputStyle={{overflow:'auto', height:16}}
+                                inputStyle={{overflow: 'auto', height: 16}}
                                 validator={minimumPositiveFloatValidator('Min Wavelength')}
                                 placeholder={'-Inf'}
                             />
@@ -917,7 +919,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                                 fieldKey={'obsCoreWavelengthMaxRange'}
                                 groupKey={skey}
                                 size={SmallFloatNumericWidth}
-                                inputStyle={{overflow:'auto', height:16}}
+                                inputStyle={{overflow: 'auto', height: 16}}
                                 validator={maximumPositiveFloatValidator('Max Wavelength')}
                                 placeholder={'+Inf'}
                             />
@@ -941,7 +943,8 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                 }
                 {DEBUG_OBSCORE && <div>
                     adql fragment: {constraintResult?.adqlConstraint} <br/>
-                    sia fragment: {constraintResult?.siaConstraintErrors?.length ? `Error: ${constraintResult.siaConstraintErrors.join(' ')}` : constraintResult?.siaConstraints.join('&')}
+                    sia
+                    fragment: {constraintResult?.siaConstraintErrors?.length ? `Error: ${constraintResult.siaConstraintErrors.join(' ')}` : constraintResult?.siaConstraints.join('&')}
                 </div>}
             </div>
         </FieldGroupCollapsible>

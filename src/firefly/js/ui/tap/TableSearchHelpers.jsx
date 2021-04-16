@@ -17,10 +17,11 @@ import * as PropTypes from 'prop-types';
 import {formFeedback, isShowHelp} from 'firefly/ui/TimePanel';
 
 /* Style Helpers */
-export const LeftInSearch = 8;
-export const LabelWidth = 106;
+export const LeftInSearch = 24;
+export const LabelWidth = 110;
 export const LableSaptail = 110;
 export const SpatialWidth = 440;
+export const SpatialLableSaptail = LableSaptail + 45 /* padding of target */ - 4 /* padding of label */;
 export const Width_Column = 175;
 export const SmallFloatNumericWidth = 12;
 export const Width_Time_Wrapper = Width_Column + 30;
