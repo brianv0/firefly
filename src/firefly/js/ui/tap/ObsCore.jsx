@@ -61,13 +61,17 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
     }, []);
 
     const DEBUG_OBSCORE = get(getAppOptions(), ['tapObsCore', 'debug'], false);
+    const obsCoreCollectionOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreCollection'], {});
+    const obsCoreCalibrationLevelOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreCalibrationLevel'], {});
+    const obsCoreSubTypeOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreSubType'], {});
+    const obsCoreInstrumentNameOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreInstrumentName'], {});
 
     const calibrationOptions = [
-        {value: '0', label: '0', title: 'Raw instrumental data'},
-        {value: '1', label: '1', title: 'Instrumental data in standard format (FITS, VOTable)'},
-        {value: '2', label: '2', title: 'Calibrated, science-ready data'},
-        {value: '3', label: '3', title: 'Enhanced data products'},
-        {value: '4', label: '4', title: 'Analysis data products'},
+        {value: '0', label: '0', title: obsCoreCalibrationLevelOptions.level?.[0]?.title || 'Raw instrumental data'},
+        {value: '1', label: '1', title: obsCoreCalibrationLevelOptions.level?.[1]?.title ||'Instrumental data in standard format (FITS, VOTable)'},
+        {value: '2', label: '2', title: obsCoreCalibrationLevelOptions.level?.[2]?.title || 'Calibrated, science-ready data'},
+        {value: '3', label: '3', title: obsCoreCalibrationLevelOptions.level?.[3]?.title || 'Enhanced data products'},
+        {value: '4', label: '4', title: obsCoreCalibrationLevelOptions.level?.[4]?.title || 'Analysis data products'},
     ];
 
     const ObsCoreTypeOptions = new Enum({
@@ -206,11 +210,6 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
     };
 
     const constraintResult = useConstraintReducer(panelPrefix, constraintReducer);
-
-    const obsCoreCollectionOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreCollection'], {});
-    const obsCoreCalibrationLevelOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreCalibrationLevel'], {});
-    const obsCoreSubTypeOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreSubType'], {});
-    const obsCoreInstrumentNameOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreInstrumentName'], {});
 
     return (
         <FieldGroupCollapsible header={<Header title={panelTitle} helpID={tapHelpId(panelPrefix)}
