@@ -123,15 +123,15 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
         };
 
         // pull out the fields we care about
-        const {obsCoreCollection, obsCoreCalibrationSelection, obsCoreTypeSelection, obsCoreSubType, obsCoreInstrumentName} = fields;
+        const {obsCoreCollection, obsCoreCalibrationLevel, obsCoreTypeSelection, obsCoreSubType, obsCoreInstrumentName} = fields;
         checkObsCoreField('obsCoreCollection', true);
         if (obsCoreCollection.value?.length > 0) {
             adqlConstraints.push(`obs_collection = '${obsCoreCollection.value}'`);
             siaConstraints.push(`COLLECTION=${obsCoreCollection.value}`);
         }
-        checkObsCoreField('obsCoreCalibrationSelection', true);
-        if (obsCoreCalibrationSelection.value) {
-            const mcResult = multiConstraint(obsCoreCalibrationSelection.value, 'calib_level', 'CALIB', '');
+        checkObsCoreField('obsCoreCalibrationLevel', true);
+        if (obsCoreCalibrationLevel.value) {
+            const mcResult = multiConstraint(obsCoreCalibrationLevel.value, 'calib_level', 'CALIB', '');
             adqlConstraints.push(mcResult.adqlConstraint);
             siaConstraints.push(...mcResult.siaConstraints);
         }
@@ -208,6 +208,7 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
     const constraintResult = useConstraintReducer(panelPrefix, constraintReducer);
 
     const obsCoreCollectionOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreCollection'], {});
+    const obsCoreCalibrationLevelOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreCalibrationLevel'], {});
     const obsCoreSubTypeOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreSubType'], {});
     const obsCoreInstrumentNameOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreInstrumentName'], {});
 
@@ -226,13 +227,18 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
             }}>
                 <div style={{display: 'flex', flexDirection: 'column', marginTop: '5px'}}>
                     <CheckboxGroupInputField
-                        fieldKey={'obsCoreCalibrationSelection'}
+                        fieldKey={'obsCoreCalibrationLevel'}
                         options={calibrationOptions}
-                        tooltip={'Select ObsCore Calibration Level (calibration_level)'}
+                        tooltip={obsCoreCalibrationLevelOptions.tooltip || 'Select ObsCore Calibration Level (calibration_level)'}
                         label={'Calibration Level:'}
                         labelWidth={LableSaptail}
                         multiple={true}
                     />
+                    {obsCoreCalibrationLevelOptions.helptext &&
+                    <div style={{marginLeft: LableSaptail, marginTop: '5px', padding: '2px'}}>
+                        <i>{obsCoreCalibrationLevelOptions.helptext}</i>
+                    </div>
+                    }
                 </div>
                 <div style={{display: 'flex', flexDirection: 'column'}}>
                     <ListBoxInputField
