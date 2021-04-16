@@ -209,7 +209,7 @@ const FunctionalTableSearchMethods = (props) => {
 
     const obsCoreEnabled = props.obsCoreEnabled;
     const cols = getAvailableColumns(columnsModel);
-    const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
+    const DEBUG_OBSCORE = get(getAppOptions(), ['tapObsCore', 'debug'], false);
 
     // We create a new reducer for this FieldGroup
     return (
@@ -330,7 +330,7 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
         };
     };
 
-    const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
+    const DEBUG_OBSCORE = get(getAppOptions(), ['tapObsCore', 'debug'], false);
     const constraintResult = useConstraintReducer('spatial', constraintReducer, [obsCoreEnabled, spatialRegionOperation]);
 
     useFieldGroupReducer('spatial', onChange);
@@ -577,7 +577,7 @@ function TemporalSearch({cols, columnsModel, groupKey, fields, useConstraintRedu
     };
 
 
-    const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
+    const DEBUG_OBSCORE = get(getAppOptions(), ['tapObsCore', 'debug'], false);
     const constraintResult = useConstraintReducer('temporal', constraintReducer);
 
     return (

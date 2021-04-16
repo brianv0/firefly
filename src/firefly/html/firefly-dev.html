@@ -45,25 +45,6 @@
                 charts: {
                     singleTraceUI: false
                 },
-                obsCore: {
-                    filterDefinitions: [
-                        {
-                            name: 'LSST',
-                            options: [
-                                {label: 'u', value : '367'},
-                                {label: 'g', value : '483'},
-                                {label: 'r', value : '622'},
-                                {label: 'i', value : '755'},
-                                {label: 'z', value : '869'},
-                                {label: 'y', value : '971'},
-                            ],
-                        },
-                        {
-                            name: 'WISE',
-                            options: [{label: 'W1', value: '1'}, {label: 'W2', value: '2'}, {label: 'W3', value: '3'}]
-                        }
-                    ],
-                },
                 hips : {
                     useForCoverage: true,
                     useForImageSearch: true,
@@ -73,6 +54,46 @@
                 },
                 image : {
                     defaultColorTable : 5
+                },
+                tapObsCore: {
+                    filterDefinitions: [
+                        {
+                            name: 'LSSTCam',
+                            options: [
+                                {label: 'u', value : '367', title: '367nm central value'},
+                                {label: 'g', value : '483', title: '483nm central value'},
+                                {label: 'r', value : '622', title: '622nm central value'},
+                                {label: 'i', value : '755', title: '755nm central value'},
+                                {label: 'z', value : '869', title: '869nm central value'},
+                                {label: 'y', value : '971', title: '971nm central value'},
+                            ],
+                        },
+                        {
+                            name: 'WISE',
+                            options: [
+                                {label: 'W1', value : '3353', title:'3.353 micron central value'},
+                                {label: 'W2', value : '4603', title:'4.603 micron central value'},
+                                {label: 'W3', value : '11561', title:'11.561 micron central value'},
+                                {label: 'W4', value : '22088', title:'22.088 micron central value'},
+                            ]
+                        },
+                    ],
+                    obsCoreInstrumentName: {
+                        tooltip: 'Instrument Name Tooltip',
+                        placeholder: 'LSSTCam',
+                        helptext: 'Instrument Name help text'
+                    },
+                    obsCoreSubType: {
+                        tooltip: 'Butler Dataset Type (raw, calexp, etc..)',
+                        placeholder: 'calexp',
+                        helptext: 'Butler Repo Dataset type',
+                    },
+                    obsCoreCollection: {
+                        tooltip: 'Custom tooltip for collection',
+                        placeholder: 'Custom placeholder',
+                        helptext: 'Custom help text for collection',
+                    },
+                    debug: true,
                 },
                 coverage : { // example of using DSS and wise combination for coverage (not that anyone would want to combination)
                     hipsSourceURL : 'http://alasky.u-strasbg.fr/DSS/DSSColor', // url

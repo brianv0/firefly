@@ -19,8 +19,17 @@
                 hips: {
                     readoutShowsPixel: true
                 },
-                obsCore: {
+                tapObsCore: {
                     filterDefinitions: [
+                        {
+                            name: 'WISE',
+                            options: [
+                                {label: 'W1', value : '3353', title:'3.353 micron central value'},
+                                {label: 'W2', value : '4603', title:'4.603 micron central value'},
+                                {label: 'W3', value : '11561', title:'11.561 micron central value'},
+                                {label: 'W4', value : '22088', title:'22.088 micron central value'},
+                            ]
+                        },
                         {
                             name: 'LSSTCam',
                             options: [
@@ -32,16 +41,22 @@
                                 {label: 'y', value : '971', title: '971nm central value'},
                             ],
                         },
-                        {
-                            name: 'WISE',
-                            options: [
-                                {label: 'W1', value : '3353', title:'3.353 micron central value'},
-                                {label: 'W2', value : '4603', title:'4.603 micron central value'},
-                                {label: 'W3', value : '11561', title:'11.561 micron central value'},
-                                {label: 'W4', value : '22088', title:'22.088 micron central value'},
-                            ]
-                        },
                     ],
+                    obsCoreInstrumentName: {
+                        tooltip: 'Instrument Name Tooltip',
+                        placeholder: 'LSSTCam',
+                    },
+                    obsCoreSubType: {
+                        tooltip: 'Butler Dataset Type (raw, calexp, etc..)',
+                        placeholder: 'calexp',
+                        helptext: 'Butler Repo Dataset type',
+                    },
+                    obsCoreCollection: {
+                        tooltip: 'Custom tooltip for collection',
+                        placeholder: 'Custom placeholder',
+                        helptext: 'Custom help text for collection',
+                    },
+                    debug: true,
                 },
                 coverage: { // example of using DSS and wise combination for coverage (not that anyone would want to combination)
                     hipsSourceURL: 'http://alasky.u-strasbg.fr/DSS/DSSColor', // url

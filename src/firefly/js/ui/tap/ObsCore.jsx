@@ -60,15 +60,15 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
         });
     }, []);
 
-    const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
+    const DEBUG_OBSCORE = get(getAppOptions(), ['tapObsCore', 'debug'], false);
 
-    const ObsCoreCalibrationLevels = new Enum({
-        '0': '0',
-        '1': '1',
-        '2': '2',
-        '3': '3',
-        '4': '4',
-    });
+    const calibrationOptions = [
+        {value: '0', label: '0', title: 'Raw instrumental data'},
+        {value: '1', label: '1', title: 'Instrumental data in standard format (FITS, VOTable)'},
+        {value: '2', label: '2', title: 'Calibrated, science-ready data'},
+        {value: '3', label: '3', title: 'Enhanced data products'},
+        {value: '4', label: '4', title: 'Analysis data products'},
+    ];
 
     const ObsCoreTypeOptions = new Enum({
         'Image': 'image',
@@ -81,13 +81,6 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
         'Measurements': 'measurements',
         '(null)': 'null',
     });
-
-    const calibrationOptions = () => {
-        return ObsCoreCalibrationLevels.enums.reduce((p, enumItem) => {
-            p.push({label: enumItem.key, value: enumItem.value});
-            return p;
-        }, []);
-    };
 
     const typeOptions = () => {
         return ObsCoreTypeOptions.enums.reduce((p, enumItem) => {
@@ -214,6 +207,10 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
 
     const constraintResult = useConstraintReducer(panelPrefix, constraintReducer);
 
+    const obsCoreCollectionOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreCollection'], {});
+    const obsCoreSubTypeOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreSubType'], {});
+    const obsCoreInstrumentNameOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreInstrumentName'], {});
+
     return (
         <FieldGroupCollapsible header={<Header title={panelTitle} helpID={tapHelpId(panelPrefix)}
                                                checkID={`${panelPrefix}Check`} panelValue={panelValue} message={message}/>}
@@ -230,8 +227,8 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                 <div style={{display: 'flex', flexDirection: 'column', marginTop: '5px'}}>
                     <CheckboxGroupInputField
                         fieldKey={'obsCoreCalibrationSelection'}
-                        options={calibrationOptions()}
-                        tooltip={'Select ObsCore Calibration Level. \n0 is Raw instrumental data, \n1 is Instrumental data in standard format \n  (e.g. FITS, VOTable, etc...), \n2 is Calibrated, science-ready data, \n3 is Enhanced data products, \n4 is Analysis data products'}
+                        options={calibrationOptions}
+                        tooltip={'Select ObsCore Calibration Level (calibration_level)'}
                         label={'Calibration Level:'}
                         labelWidth={LableSaptail}
                         multiple={true}
@@ -255,11 +252,17 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                         groupKey={skey}
                         inputWidth={Width_Column}
                         inputStyle={{overflow: 'auto', height: 16}}
-                        tooltip={'Select ObsCore Instrument Name'}
+                        tooltip={obsCoreInstrumentNameOptions.tooltip || 'Select ObsCore Instrument Name'}
+                        placeholder={obsCoreInstrumentNameOptions.placeholder}
                         label={'Instrument Name:'}
                         labelWidth={LableSaptail}
                         validator={fakeValidator}
                     />
+                    {obsCoreInstrumentNameOptions.helptext &&
+                    <div style={{marginLeft: LableSaptail, marginTop: '5px', padding: '2px'}}>
+                        <i>{obsCoreInstrumentNameOptions.helptext}</i>
+                    </div>
+                    }
                 </div>
                 <div style={{marginTop: '5px'}}>
                     <ValidationField
@@ -267,11 +270,17 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                         groupKey={skey}
                         inputWidth={Width_Column}
                         inputStyle={{overflow: 'auto', height: 16}}
-                        tooltip={'Select ObsCore Collection Name'}
+                        tooltip={obsCoreCollectionOptions.tooltip || 'Select ObsCore Collection Name'}
+                        placeholder={obsCoreCollectionOptions.placeholder}
                         label={'Collection:'}
                         labelWidth={LableSaptail}
                         validator={fakeValidator}
                     />
+                    {obsCoreCollectionOptions.helptext &&
+                    <div style={{marginLeft: LableSaptail, marginTop: '5px', padding: '2px'}}>
+                        <i>{obsCoreCollectionOptions.helptext}</i>
+                    </div>
+                    }
                 </div>
                 {hasSubType && <div style={{marginTop: '5px'}}>
                     <ValidationField
@@ -279,11 +288,17 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
                         groupKey={skey}
                         inputWidth={Width_Column}
                         inputStyle={{overflow: 'auto', height: 16}}
-                        tooltip={'Select ObsCore Dataproduct Subtype Name'}
+                        tooltip={obsCoreSubTypeOptions.tooltip || 'Select ObsCore Dataproduct Subtype Name'}
+                        placeholder={obsCoreSubTypeOptions.placeholder}
                         label={'Data Product Subtype:'}
                         labelWidth={LableSaptail}
                         validator={fakeValidator}
                     />
+                    {obsCoreSubTypeOptions.helptext &&
+                    <div style={{marginLeft: LableSaptail, marginTop: '5px', padding: '2px'}}>
+                        <i>{obsCoreSubTypeOptions.helptext}</i>
+                    </div>
+                    }
                 </div>}
                 {DEBUG_OBSCORE && <div>
                     adql fragment: {constraintResult?.adqlConstraint} <br/>
@@ -325,7 +340,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
         });
     }, []);
 
-    const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
+    const DEBUG_OBSCORE = get(getAppOptions(), ['tapObsCore', 'debug'], false);
 
     const constraintReducer = (fields, newFields) => {
         let constraintsResult = {
@@ -685,7 +700,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
     const [rangeType, setRangeType] = useState('contains');
     const [message, setMesage] = useState();
 
-    const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
+    const DEBUG_OBSCORE = get(getAppOptions(), ['tapObsCore', 'debug'], false);
 
     useEffect(() => {
         return FieldGroupUtils.bindToStore(groupKey, (fields) => {
@@ -697,7 +712,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
     }, []);
 
 
-    const filterDefinitions = get(getAppOptions(), ['obsCore', 'filterDefinitions'], []);
+    const filterDefinitions = get(getAppOptions(), ['tapObsCore', 'filterDefinitions'], []);
 
     const constraintReducer = (fields, newFields) => {
         const adqlConstraints = [];
