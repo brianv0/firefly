@@ -584,7 +584,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                             groupKey={skey}
                             size={SmallFloatNumericWidth}
                             inputStyle={{overflow: 'auto', height: 16}}
-                            tooltip={'Cumulative shutter-open exposure duration in seconds (upper bound)'}
+                            tooltip={'Cumulative shutter-open exposure must be less than this amount'}
                             validator={maximumPositiveFloatValidator('Maximum Exposure Length')}
                             placeholder={'+Inf'}
                         />
