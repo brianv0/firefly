@@ -578,6 +578,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                             validator={minimumPositiveFloatValidator('Minimum Exposure Length')}
                             placeholder={'-Inf'}
                         />
+                        <div style={{display: 'flex', marginTop: 5, marginRight: '16px', paddingRight: '3px'}}>to</div>
                         <ValidationField
                             fieldKey={'exposureLengthMax'}
                             groupKey={skey}
@@ -685,11 +686,6 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
     const [message, setMesage] = useState();
 
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
-
-    const obsCoreWavelengthExample = <div style={{marginTop: 10, marginLeft: LeftInSearch}}>
-        Select observations whose wavelength coverage:
-        <br/>
-    </div>;
 
     useEffect(() => {
         return FieldGroupUtils.bindToStore(groupKey, (fields) => {
@@ -863,7 +859,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                 />
                 {filterDefinitions && selectionType === 'filter' &&
                 <div style={{marginTop: '10px'}}>
-                    <span style={{marginLeft: LeftInSearch}}>Require coverage at the approximate center of these filters:</span>
+                    <div style={{paddingTop: '4px'}}>Require coverage at the approximate center of these filters:</div>
                     <div style={{marginLeft: LeftInSearch}}>
                         {filterDefinitions.map((filterDefinition) => {
                             return (
@@ -881,22 +877,25 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                     </div>
                 </div>
                 }
-                {selectionType === 'numerical' && obsCoreWavelengthExample}
                 {selectionType === 'numerical' &&
-                <div style={{marginTop: '10px', marginLeft: LeftInSearch}}>
-                    <ListBoxInputField
-                        fieldKey={'obsCoreWavelengthRangeType'}
-                        options={
-                            [
-                                {label: 'contains', value: 'contains'},
-                                {label: 'overlaps', value: 'overlaps'},
-                            ]}
-                        initialState={{
-                            value: 'contains'
-                        }}
-                        multiple={false}
-                    />
-                    <div style={{display: 'inline-flex', marginTop: '10px'}}>
+                <div style={{marginTop: '10px'}}>
+                    <div style={{display: 'flex'}}>
+                        <ListBoxInputField
+                            fieldKey={'obsCoreWavelengthRangeType'}
+                            options={
+                                [
+                                    {label: 'contains', value: 'contains'},
+                                    {label: 'overlaps', value: 'overlaps'},
+                                ]}
+                            initialState={{
+                                value: 'contains'
+                            }}
+                            label={'Select observations whose wavelength coverage'}
+                            labelWidth={236}
+                            multiple={false}
+                        />
+                    </div>
+                    <div style={{display: 'inline-flex', marginTop: '10px', marginLeft: LeftInSearch}}>
                         {rangeType === 'contains' &&
                         <div style={{display: 'flex'}}>
                             <ValidationField
@@ -918,6 +917,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                                 validator={minimumPositiveFloatValidator('Min Wavelength')}
                                 placeholder={'-Inf'}
                             />
+                            <div style={{display: 'flex', marginTop: 5, marginRight: '16px', paddingRight: '3px'}}>to</div>
                             <ValidationField
                                 fieldKey={'obsCoreWavelengthMaxRange'}
                                 groupKey={skey}
