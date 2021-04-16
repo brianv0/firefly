@@ -471,7 +471,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                     fieldKey={'exposureRangeType'}
                     options={exposureRangeOptions}
                     alignment={'horizontal'}
-                    label={'Time of Observation'}
+                    label={'Time of Observation:'}
                     labelWidth={LableSaptail}
                 />
                 <div>
@@ -587,6 +587,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
                             validator={maximumPositiveFloatValidator('Maximum Exposure Length')}
                             placeholder={'+Inf'}
                         />
+                        <div style={{display: 'flex', marginTop: 5}}>seconds</div>
                     </div>
                 </div>
                 {DEBUG_OBSCORE && <div>
@@ -685,7 +686,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
 
     const DEBUG_OBSCORE = get(getAppOptions(), ['obsCore', 'debug'], false);
 
-    const obsCoreWavelengthExample = <div style={{marginTop: 10}}>
+    const obsCoreWavelengthExample = <div style={{marginTop: 10, marginLeft: LeftInSearch}}>
         Select observations whose wavelength coverage:
         <br/>
     </div>;
@@ -854,13 +855,15 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
             <div style={{display: 'flex', flexDirection: 'column', width: SpatialWidth, justifyContent: 'flex-start'}}>
                 <RadioGroupInputField
                     fieldKey={'obsCoreWavelengthSelectionType'}
-                    options={[{label: 'By Filter Band', value: 'filter'}, {label: 'By Wavelength', value: 'numerical'}]}
+                    options={[{label: 'By Filter Bands', value: 'filter'}, {label: 'By Wavelength', value: 'numerical'}]}
                     alignment={'horizontal'}
                     wrapperStyle={{marginTop: '10px'}}
+                    label={'Query Type:'}
+                    labelWidth={LableSaptail}
                 />
                 {filterDefinitions && selectionType === 'filter' &&
                 <div style={{marginTop: '10px'}}>
-                    <span>Require coverage at the approximate center of these filters:</span>
+                    <span style={{marginLeft: LeftInSearch}}>Require coverage at the approximate center of these filters:</span>
                     <div style={{marginLeft: LeftInSearch}}>
                         {filterDefinitions.map((filterDefinition) => {
                             return (
