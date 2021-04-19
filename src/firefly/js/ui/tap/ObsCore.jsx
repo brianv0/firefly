@@ -728,7 +728,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
         // The reducer was added when the component was mounted but not before all parts of the
         // But fields show up later if we change between filter/numerical.
         // We can use these two fields to verify the other parts are mounted.
-        const {obsCoreWavelengthSelectionType} = fields;
+        const {obsCoreWavelengthSelectionType, obsCoreWavelengthRangeType} = fields;
         let enoughMounted = true;
         if (fields) {
             // pull out the fields we care about
@@ -764,13 +764,12 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                         [...fieldsValidity.values()][0].message = 'at least one filter must be checked';
                     }
                 }
-            } else if (obsCoreWavelengthSelectionType?.value === 'numerical') {
+            } else if (obsCoreWavelengthSelectionType?.value === 'numerical' || obsCoreWavelengthRangeType?.mounted) {
                 const {
                     obsCoreWavelengthContains,
                     obsCoreWavelengthMinRange,
                     obsCoreWavelengthMaxRange,
                     obsCoreWavelengthUnits,
-                    obsCoreWavelengthRangeType,
                 } = fields;
                 if (obsCoreWavelengthUnits?.mounted) {
                     let exponent;
@@ -859,6 +858,8 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
     };
 
     const constraintResult = useConstraintReducer('wavelength', constraintReducer, [selectionType, rangeType]);
+    const hasFilters = filterDefinitions?.length > 0;
+    const useNumerical = !hasFilters || selectionType === 'numerical';
 
     return (
         <FieldGroupCollapsible header={<Header title={panelTitle} helpID={tapHelpId(panelPrefix)}
@@ -869,15 +870,15 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                                fieldKey={`${panelPrefix}SearchPanel`}
                                headerStyle={HeaderFont}>
             <div style={{display: 'flex', flexDirection: 'column', width: SpatialWidth, justifyContent: 'flex-start'}}>
-                <RadioGroupInputField
+                {hasFilters && <RadioGroupInputField
                     fieldKey={'obsCoreWavelengthSelectionType'}
                     options={[{label: 'By Filter Bands', value: 'filter'}, {label: 'By Wavelength', value: 'numerical'}]}
                     alignment={'horizontal'}
                     wrapperStyle={{marginTop: '10px'}}
                     label={'Query Type:'}
                     labelWidth={LableSaptail}
-                />
-                {filterDefinitions && selectionType === 'filter' &&
+                />}
+                {hasFilters && selectionType === 'filter' &&
                 <div style={{marginTop: '10px'}}>
                     <div style={{paddingTop: '4px'}}>Require coverage at the approximate center of these filters:</div>
                     <div style={{marginLeft: LeftInSearch}}>
@@ -897,7 +898,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
                     </div>
                 </div>
                 }
-                {selectionType === 'numerical' &&
+                {useNumerical &&
                 <div style={{marginTop: '10px'}}>
                     <div style={{display: 'flex'}}>
                         <ListBoxInputField

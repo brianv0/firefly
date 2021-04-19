@@ -80,22 +80,21 @@
                     ],
                     obsCoreCalibrationLevel: {
                         tooltip: 'Calibration ',
-                        helptext: 'For Rubin: 1 is raw data; 2 is PVIs; 3 selects difference images and coadds'
+                        helptext: '1 is raw data; 2 is PVIs; 3 selects difference images and coadds',
+                        level: {
+                            1: {title: 'For Rubin: Raw Data'},
+                            2: {title: 'For Rubin: PVIs'},
+                            3: {title: 'For Rubin: Difference Images and Coadds'},
+                        },
                     },
                     obsCoreInstrumentName: {
-                        tooltip: 'Instrument Name Tooltip',
-                        placeholder: 'LSSTCam',
-                        helptext: 'Instrument Name help text'
+                        tooltip: 'LSSTCam, LSSTComCam',
+                        placeholder: 'e.g. LSSTCam',
                     },
                     obsCoreSubType: {
                         tooltip: 'Butler Dataset Type (raw, calexp, etc..)',
-                        placeholder: 'calexp',
+                        placeholder: 'e.g. calexp',
                         helptext: 'Butler Repo Dataset type',
-                    },
-                    obsCoreCollection: {
-                        tooltip: 'Custom tooltip for collection',
-                        placeholder: 'Custom placeholder',
-                        helptext: 'Custom help text for collection',
                     },
                     debug: true,
                 },

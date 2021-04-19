@@ -221,7 +221,7 @@ function makeExtraWidgets(initArgs, selectBy) {
                          wrapperStyle={{marginLeft: 30, height: '100%', alignSelf: 'center'}}
                          style={{height: 17, width: 70}} />)
         ];
-    if (selectBy==='basic') {
+    if (selectBy==='basic' || selectBy==='obscore') {
         extraWidgets.push( (<ExtraButton key='editADQL' text='Populate and edit ADQL'
                                          onClick={() => populateAndEditAdql()} style={{marginLeft: 30}} />));
     }
