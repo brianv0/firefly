@@ -177,6 +177,14 @@ function TapSearchPanelComponents({initArgs, serviceUrl, onTapServiceOptionSelec
         options.push({label: 'Image Search (ObsTAP)', value: 'obscore', tooltip: 'Search the ObsTAP image metadata on this service with a specialized GUI query builder'});
     }
 
+    let queryTypeEpilogue = '';
+    if (selectBy === 'obscore') {
+        // This component does not know the actual name of the table, but it is guaranteed
+        // that name.toLowerCase() === 'ivoa.ObsCore'.toLowerCase()
+        queryTypeEpilogue =
+            <div style={{display: 'inline-flex', marginTop: '4px'}}>(Searching the <pre style={{margin: '0px .5em'}}>ivoa.ObsCore</pre> table on this service...)</div>;
+    }
+
     return (
         <FieldGroup groupKey={gkey} keepState={true} style={{flexGrow: 1, display: 'flex'}}>
             <div className='TapSearch'>
@@ -202,6 +210,7 @@ function TapSearchPanelComponents({initArgs, serviceUrl, onTapServiceOptionSelec
                         options = {options}
                         wrapperStyle={{alignSelf: 'center'}}
                     />
+                    {queryTypeEpilogue}
                 </div>
                 {(selectBy === 'basic' || selectBy === 'obscore') && <BasicUI  serviceUrl={serviceUrl} selectBy={selectBy} initArgs={initArgs}/>}
                 {selectBy === 'adql' && <AdqlUI serviceUrl={serviceUrl}/>}

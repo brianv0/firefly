@@ -211,7 +211,7 @@ export function BasicUI(props) {
             let seenTable = false;
             obsCoreTables.forEach((tableRow) => {
                 const [schema, table, ...more] = tableRow;
-                // match schema name/table name
+                // match schema name/table name only (we omit columnsModel)
                 if (matchesObsCoreHeuristic(schema, tableName, null)){
                     setSchemaName(schema);
                     setTableName(table);
