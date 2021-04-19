@@ -60,11 +60,11 @@ export function ObsCoreSearch({cols, groupKey, fields, useConstraintReducer}) {
         });
     }, []);
 
-    const DEBUG_OBSCORE = get(getAppOptions(), ['tapObsCore', 'debug'], false);
-    const obsCoreCollectionOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreCollection'], {});
-    const obsCoreCalibrationLevelOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreCalibrationLevel'], {});
-    const obsCoreSubTypeOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreSubType'], {});
-    const obsCoreInstrumentNameOptions =  get(getAppOptions(), ['tapObsCore', 'obsCoreInstrumentName'], {});
+    const DEBUG_OBSCORE = getAppOptions().tapObsCore?.debug ?? false;
+    const obsCoreCollectionOptions =  getAppOptions().tapObsCore?.obsCoreCollection ?? {};
+    const obsCoreCalibrationLevelOptions =  getAppOptions().tapObsCore?.obsCoreCalibrationLevel ?? {};
+    const obsCoreSubTypeOptions =  getAppOptions().tapObsCore?.obsCoreSubType ?? {};
+    const obsCoreInstrumentNameOptions =  getAppOptions().tapObsCore?.obsCoreInstrumentName ?? {};
 
     const calibrationOptions = [
         {value: '0', label: '0', title: obsCoreCalibrationLevelOptions.level?.[0]?.title || 'Raw instrumental data'},
@@ -345,7 +345,7 @@ export function ExposureDurationSearch({cols, groupKey, fields, useConstraintRed
         });
     }, []);
 
-    const DEBUG_OBSCORE = get(getAppOptions(), ['tapObsCore', 'debug'], false);
+    const DEBUG_OBSCORE = getAppOptions().tapObsCore?.debug ?? false;
 
     const constraintReducer = (fields, newFields) => {
         let constraintsResult = {
@@ -705,7 +705,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
     const [rangeType, setRangeType] = useState('contains');
     const [message, setMesage] = useState();
 
-    const DEBUG_OBSCORE = get(getAppOptions(), ['tapObsCore', 'debug'], false);
+    const DEBUG_OBSCORE = getAppOptions().tapObsCore?.debug ?? false;
 
     useEffect(() => {
         return FieldGroupUtils.bindToStore(groupKey, (fields) => {
@@ -717,7 +717,7 @@ export function ObsCoreWavelengthSearch({cols, groupKey, fields, useConstraintRe
     }, []);
 
 
-    const filterDefinitions = get(getAppOptions(), ['tapObsCore', 'filterDefinitions'], []);
+    const filterDefinitions = getAppOptions()?.tapObsCore?.filterDefinitions ?? [];
 
     const constraintReducer = (fields, newFields) => {
         const adqlConstraints = [];
