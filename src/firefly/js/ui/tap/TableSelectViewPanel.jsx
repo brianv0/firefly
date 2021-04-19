@@ -18,7 +18,7 @@ import {
     updateTapBrowserState,
     loadObsCoreSchemaTables,
 } from './TapUtil.js';
-import {NameSelect, NameSelectField} from './Select.jsx';
+import {NameSelect} from './Select.jsx';
 
 import {TableColumnsConstraints, TableColumnsConstraintsToolbar} from './TableColumnsConstraints.jsx';
 

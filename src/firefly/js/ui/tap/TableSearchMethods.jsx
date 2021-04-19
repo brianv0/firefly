@@ -51,8 +51,6 @@ const logger = Logger('TableSearchMethods');
 
 export const skey = 'TABLE_SEARCH_METHODS';
 const Spatial = 'Spatial';
-const SpatialPanel = 'spatialSearchPanel';
-const SpatialCheck = 'spatialCheck';
 const CenterColumns = 'centerColumns';
 const CenterLonColumns = 'centerLonColumns';
 const CenterLatColumns = 'centerLatColumns';
@@ -61,7 +59,6 @@ const RadiusSize = 'coneSize';
 const PolygonCorners = 'polygoncoords';
 const ImageCornerCalc = 'imageCornerCalc';
 const Temporal = 'Temporal';
-const TemporalPanel = 'temporalSearchPanel';
 const TemporalCheck = 'temporalCheck';
 const TemporalColumns = 'temporalColumns';
 const DatePickerOpenStatus = 'datePickerOpenStatus';
@@ -85,7 +82,6 @@ const CrtColumnsModel = 'crtColumnsModel';
 const PanelMessage = 'panelMessage';
 
 const fieldsMap = {[Spatial]: {
-                        [SpatialPanel]: {label: Spatial},
                         [CenterColumns]: {label: 'Position Columns'},
                         [CenterLonColumns]: {label: 'Longitude Column'},
                         [CenterLatColumns]: {label: 'Latitude Column'},
@@ -93,7 +89,6 @@ const fieldsMap = {[Spatial]: {
                         [RadiusSize]: {label: 'Radius'},
                         [PolygonCorners]:  {label: 'Coordinates'}},
                    [Temporal]: {
-                        [TemporalPanel]: {label:Temporal},
                         [TemporalColumns]: {label: 'Temporal Column'},
                         [ExposureColumns]: {label: 'Exposure Duration Column'},
                         [TimeFrom]: {label: 'From'},
@@ -416,6 +411,7 @@ function SpatialSearch({cols, columnsModel, groupKey, fields, initArgs={}, obsCo
                                initialState={{ value: 'open' }}
                                fieldKey={`${panelPrefix}SearchPanel`}
                                wrapperStyle={{marginBottom: 15}}
+                               label={'Spatial'}
                                headerStyle={HeaderFont}>
             <div style={{marginTop: '5px'}}>
                 {!obsCoreEnabled && showCenterColumns()}
@@ -586,6 +582,7 @@ function TemporalSearch({cols, columnsModel, groupKey, fields, useConstraintRedu
                                initialState={{ value: 'closed' }}
                                fieldKey={`${panelPrefix}SearchPanel`}
                                wrapperStyle={{marginBottom: 15}}
+                               label={Temporal}
                                headerStyle={HeaderFont}>
                 <div style={{marginTop: 5, height: 100}}>
                     {showTemporalColumns()}
