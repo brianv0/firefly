@@ -1459,7 +1459,7 @@ export function matchesObsCoreHeuristic(schemaName, tableName, columnsModel) {
         return true;
     }
     if (columnsModel) {
-        var column_names = getColumnValues(columnsModel, 'column_name');
+        const column_names = getColumnValues(columnsModel, 'column_name');
         return OBSTAP_MATCH_COLUMNS.every((columnName) => {
             return column_names.indexOf(columnName) >= 0;
         });
