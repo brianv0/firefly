@@ -167,30 +167,6 @@ const defFireflyOptions = {
 
         },
     },
-    obsCore : {
-        filterDefinitions: [
-            {
-                name: 'WISE',
-                options: [
-                    {label: 'W1', value : '3353'},
-                    {label: 'W2', value : '4603'},
-                    {label: 'W3', value : '11561'},
-                    {label: 'W4', value : '22088'},
-                ]
-            },
-            {
-                name: 'LSST',
-                options: [
-                    {label: 'u', value : '367'},
-                    {label: 'g', value : '483'},
-                    {label: 'r', value : '622'},
-                    {label: 'i', value : '755'},
-                    {label: 'z', value : '869'},
-                    {label: 'y', value : '971'},
-                ],
-            },
-        ],
-    },
     tap : {
         services: [
             tapEntry('IRSA', 'https://irsa.ipac.caltech.edu/TAP'),
