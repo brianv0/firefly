@@ -1,8 +1,8 @@
-import React,  {useState, useEffect, useReducer} from 'react';
+import React,  {useState, useEffect} from 'react';
 import PropTypes from 'prop-types';
 import Enum from 'enum';
-import {get, has, isUndefined, set} from 'lodash';
-import FieldGroupUtils, {getField, getFieldVal} from '../../fieldGroup/FieldGroupUtils.js';
+import {get} from 'lodash';
+import FieldGroupUtils, {getFieldVal} from '../../fieldGroup/FieldGroupUtils.js';
 import {FieldGroupCollapsible} from 'firefly/ui/panel/CollapsiblePanel';
 import {HeaderFont, ISO, MJD, tapHelpId} from 'firefly/ui/tap/TapUtil';
 import {ValidationField} from 'firefly/ui/ValidationField';
